@@ -85,6 +85,7 @@
     ollama
     zsh-powerlevel10k
     slack
+    discord
   ];
 
   environment.variables = {
