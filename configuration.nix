@@ -89,6 +89,7 @@
     zsh-powerlevel10k
     slack
     discord
+    logseq
   ];
 
   environment.variables = {
