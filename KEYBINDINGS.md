@@ -10,7 +10,7 @@ Press `Mod+Shift+/` (or `Mod+?`) to show the hotkey overlay.
 
 | Keybinding | Action |
 |------------|--------|
-| `Mod+T` | Open terminal (Alacritty) |
+| `Mod+Enter` | Open terminal (Alacritty) |
 | `Mod+D` | Open app launcher (Fuzzel) |
 | `Super+Alt+L` | Lock screen (swaylock) |
 | `Super+Alt+S` | Toggle screen reader (Orca) |
