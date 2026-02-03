@@ -90,6 +90,12 @@
     slack
     discord
     logseq
+    
+    # Screenshot tools (Flameshot alternative for Wayland)
+    grim          # screenshot capture
+    slurp         # region selection
+    satty         # annotation/editing
+    wl-clipboard  # clipboard support
   ];
 
   environment.variables = {

@@ -604,9 +604,15 @@ binds {
     // Mod+Space       { switch-layout "next"; }
     // Mod+Shift+Space { switch-layout "prev"; }
 
-    Print { screenshot; }
-    Ctrl+Print { screenshot-screen; }
-    Alt+Print { screenshot-window; }
+    // Screenshots (Mod+A based)
+    // Mod+A = region select with annotation (Flameshot-like)
+    // Mod+Shift+A = full screen with annotation
+    // Mod+Ctrl+A = quick full screen (niri built-in, saves to ~/Pictures/Screenshots/)
+    // Mod+Alt+A = focused window (niri built-in)
+    Mod+A { spawn-sh "grim -g \"$(slurp)\" - | satty --filename -"; }
+    Mod+Shift+A { spawn-sh "grim - | satty --filename -"; }
+    Mod+Ctrl+A { screenshot; }
+    Mod+Alt+A { screenshot-window; }
 
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here
