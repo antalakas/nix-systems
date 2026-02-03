@@ -1,14 +1,11 @@
-# Niri configuration using niri-flake
-# The niri-flake module doesn't provide programs.niri.settings
-# So we use it just for enabling niri and manage the config file manually
-# Your existing ~/.config/niri/config.kdl will be used
+# Niri Wayland compositor configuration
+# Uses the built-in nixpkgs programs.niri module
+# Config file at ~/.config/niri/config.kdl is managed via Home Manager
 
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, ... }:
 
 {
-  # Enable niri using the flake module
-  # This provides the niri package and systemd integration
-  # The config file at ~/.config/niri/config.kdl is managed manually
+  # Enable niri (nixpkgs built-in module)
   programs.niri.enable = true;
   
   # Waybar is already configured via config files at ~/.config/waybar/
