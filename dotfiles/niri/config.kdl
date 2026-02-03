@@ -272,6 +272,9 @@ spawn-sh-at-startup "export XDG_CURRENT_DESKTOP=niri && systemctl --user import-
 // Add a small delay to ensure environment is exported first
 spawn-sh-at-startup "sleep 2 && waybar --config /home/andreas/.config/waybar/config.json --style /home/andreas/.config/waybar/style.css"
 
+// Start NetworkManager applet for tray icon
+spawn-at-startup "nm-applet"
+
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 

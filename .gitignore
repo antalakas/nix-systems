@@ -4,3 +4,6 @@ result-*
 
 # Ignore automatically generated direnv output
 .direnv
+
+# Ignore files containing secrets (also marked with --skip-worktree)
+wireguard-secrets.nix

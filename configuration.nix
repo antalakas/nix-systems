@@ -9,7 +9,10 @@
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./configuration-niri.nix
-    ];
+    ]
+    ++ (if builtins.pathExists ./wireguard-secrets.nix 
+        then [ ./wireguard-secrets.nix ] 
+        else [ ]);
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
