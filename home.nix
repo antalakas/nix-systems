@@ -15,13 +15,39 @@
   # User Packages (installed for this user only)
   # ─────────────────────────────────────────────────────────────
   home.packages = with pkgs; [
+    # CLI essentials
     ripgrep
     fd
     eza        # modern ls
     bat        # modern cat
     fzf        # fuzzy finder
     lazygit    # git TUI
+    
+    # Kubernetes utilities (global, version-agnostic)
+    kubectl    # k8s CLI
+    kubectx    # includes kubens
+    k9s        # TUI for k8s
+    stern      # multi-pod log tailing
+    
+    # Cloud & secrets
+    aws-vault  # AWS credential management
+    sops       # secrets encryption
+    age        # modern encryption
+    
+    # Data wrangling
+    yq-go      # jq for YAML
+    
+    # Python dev
+    pixi       # modern Python/conda environment manager
   ];
+
+  # ─────────────────────────────────────────────────────────────
+  # Direnv (auto-load dev environments)
+  # ─────────────────────────────────────────────────────────────
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;  # faster cached nix shells
+  };
 
   # ─────────────────────────────────────────────────────────────
   # Git
@@ -52,7 +78,7 @@
     
     oh-my-zsh = {
       enable = true;
-      plugins = [ "git" "sudo" "history" "fzf" ];
+      plugins = [ "git" "sudo" "history" "fzf" "kubectl" "aws" ];
     };
     
     initContent = ''
@@ -65,6 +91,11 @@
       alias ll='eza -la --icons'
       alias cat='bat'
       alias lg='lazygit'
+      
+      # Kubernetes aliases
+      alias k='kubectl'
+      alias kctx='kubectx'
+      alias kns='kubens'
     '';
   };
 

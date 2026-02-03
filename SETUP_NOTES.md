@@ -29,7 +29,9 @@ This documents the complete setup process for this NixOS system.
 | `configuration-niri.nix` | Niri/Wayland specific settings |
 | `hardware-configuration.nix` | Hardware-specific (auto-generated) |
 | `home.nix` | Home Manager user config (dotfiles, user packages) |
+| `wireguard-secrets.nix` | WireGuard VPN config (gitignored) |
 | `dotfiles/` | Actual dotfile contents managed by Home Manager |
+| `templates/` | Flake templates for new projects |
 
 ### Flake Structure
 ```nix
@@ -144,10 +146,12 @@ Added to session variables and niri spawn command for proper desktop detection.
 
 ### System-wide (configuration.nix)
 waybar, alacritty, fuzzel, firefox, brave, git, jq, btop, nvtopPackages.full,
-mesa-demos, slack, discord/vesktop, ollama, psmisc
+mesa-demos, slack, discord, ollama, psmisc, logseq, networkmanagerapplet,
+grim, slurp, satty, wl-clipboard
 
 ### User (home.nix)
-ripgrep, fd, eza, bat, fzf, lazygit
+ripgrep, fd, eza, bat, fzf, lazygit, kubectl, kubectx, k9s, stern,
+aws-vault, sops, age, yq-go, pixi
 
 ## Fonts
 - JetBrainsMono Nerd Font
@@ -172,6 +176,54 @@ ripgrep, fd, eza, bat, fzf, lazygit
                     │  2560x1600 logical  │  └────────┘
                     │     1920x1200       │
                     └─────────────────────┘
+```
+
+## WireGuard VPN
+
+NetworkManager-managed WireGuard connection in `wireguard-secrets.nix` (gitignored).
+
+```bash
+# Connect/disconnect
+nmcli connection up tiledb-wg
+nmcli connection down tiledb-wg
+```
+
+Also available via nm-applet tray icon.
+
+## Screenshots (Mod+A)
+
+Wayland screenshot tools: grim, slurp, satty
+
+| Key | Action |
+|-----|--------|
+| `Mod+A` | Region select with annotation (Flameshot-like) |
+| `Mod+Shift+A` | Full screen with annotation |
+| `Mod+Ctrl+A` | Quick full screen (saves to ~/Pictures/Screenshots/) |
+| `Mod+Alt+A` | Focused window only |
+
+## Dev Environment Strategy
+
+**Global tools** (always available via home.nix):
+- k8s: kubectl, kubectx/kubens, k9s, stern
+- secrets: aws-vault, sops, age
+- data: yq-go
+- env: direnv + nix-direnv, pixi
+
+**Per-project flakes** (pinned versions where drift matters):
+- Use `templates/` for starting new projects
+- `.envrc` with `use flake` auto-activates environment on cd
+
+### Templates
+
+```bash
+# Python project with pixi
+cp -r /etc/nixos/templates/python-pixi ~/workspace/my-project
+cd ~/workspace/my-project && direnv allow
+pixi init && pixi add python
+
+# Infrastructure/K8s project
+cp -r /etc/nixos/templates/infra-k8s ~/workspace/my-infra
+cd ~/workspace/my-infra && direnv allow
 ```
 
 ## Migrated From EndeavourOS
