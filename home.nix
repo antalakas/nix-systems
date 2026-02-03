@@ -192,6 +192,48 @@
   };
 
   # ─────────────────────────────────────────────────────────────
+  # btop (system monitor)
+  # ─────────────────────────────────────────────────────────────
+  programs.btop = {
+    enable = true;
+    settings = {
+      color_theme = "Default";
+      theme_background = true;
+      truecolor = true;
+      rounded_corners = true;
+      graph_symbol = "braille";
+      shown_boxes = "cpu mem net proc";
+      update_ms = 2000;
+      proc_sorting = "cpu lazy";
+      proc_colors = true;
+      proc_gradient = true;
+      proc_mem_bytes = true;
+      proc_cpu_graphs = true;
+      cpu_invert_lower = true;
+      show_uptime = true;
+      show_cpu_watts = true;
+      check_temp = true;
+      show_coretemp = true;
+      temp_scale = "celsius";
+      show_cpu_freq = true;
+      clock_format = "%X";
+      mem_graphs = true;
+      show_swap = true;
+      swap_disk = true;
+      show_disks = true;
+      only_physical = true;
+      use_fstab = true;
+      show_io_stat = true;
+      net_auto = true;
+      net_sync = true;
+      show_battery = true;
+      show_battery_watts = true;
+      log_level = "WARNING";
+      gpu_mirror_graph = true;
+    };
+  };
+
+  # ─────────────────────────────────────────────────────────────
   # Dotfiles (files that Home Manager doesn't have modules for)
   # ─────────────────────────────────────────────────────────────
   home.file = {
@@ -208,8 +250,5 @@
       source = ./dotfiles/waybar/niri-workspaces.sh;
       executable = true;
     };
-    
-    # btop config
-    ".config/btop/btop.conf".source = ./dotfiles/btop/btop.conf;
   };
 }
