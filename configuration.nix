@@ -108,6 +108,9 @@
     "flakes"
   ];
 
+  # Enable nix-ld for running dynamically linked binaries (pixi, conda, etc.)
+  programs.nix-ld.enable = true;
+
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
   services.blueman.enable = true;
