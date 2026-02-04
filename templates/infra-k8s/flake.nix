@@ -31,13 +31,17 @@
           ];
 
           shellHook = ''
-            echo "Infra dev environment"
+            # AWS profile for this project (customize)
+            export AWS_PROFILE=your-profile-name
             
-            # Set project-specific kubeconfig if needed
-            # export KUBECONFIG="$HOME/.kube/my-cluster.yaml"
+            # Auto-switch to project's k8s context (customize)
+            kubectx your-context 2>/dev/null || true
             
-            # Or switch context
-            # kubectx my-context 2>/dev/null || true
+            echo "📦 Infra dev environment"
+            echo "  AWS Profile: $AWS_PROFILE"
+            echo "  K8s Context: $(kubectl config current-context 2>/dev/null || echo 'none')"
+            echo ""
+            echo "💡 Use './avx' for aws-vault shell or './avx <command>' to run commands"
           '';
         };
       });

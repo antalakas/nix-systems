@@ -100,9 +100,22 @@
   };
 
   # ─────────────────────────────────────────────────────────────
+  # XDG Config Files
+  # ─────────────────────────────────────────────────────────────
+  xdg.configFile = {
+    # Force overwrite Alacritty config (prevent backup collisions)
+    "alacritty/alacritty.toml".force = true;
+    
+    # aws-vault configuration
+    "aws-vault/config".text = ''
+      # Default session duration
+      duration=8h
+    '';
+  };
+
+  # ─────────────────────────────────────────────────────────────
   # Alacritty
   # ─────────────────────────────────────────────────────────────
-  xdg.configFile."alacritty/alacritty.toml".force = true;
   programs.alacritty = {
     enable = true;
     settings = {

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# aws-vault wrapper for this project
+# Credentials duration configured in ~/.config/aws-vault/config (default 8h)
+# Usage: ./avx [command...]
+
+if [ $# -eq 0 ]; then
+  # No args = open shell
+  aws-vault exec "$AWS_PROFILE"
+else
+  # With args = run command
+  aws-vault exec "$AWS_PROFILE" -- "$@"
+fi
