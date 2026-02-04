@@ -17,6 +17,14 @@ Press `Mod+Shift+/` (or `Mod+?`) to show the hotkey overlay.
 
 ---
 
+## Keyboard Layout
+
+| Keybinding | Action |
+|------------|--------|
+| `Alt+Shift` | Switch between US and Greek keyboard layouts |
+
+---
+
 ## Window Focus
 
 | Keybinding | Action |
