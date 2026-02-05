@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Combined aws-vault + bootstrap role assumption
+# Usage: ./avx-bootstrap [command...]
+# 
+# This script:
+# 1. Uses aws-vault to get AWS credentials (with MFA)
+# 2. Assumes a bootstrap role using those credentials
+# 3. Opens a shell or runs a command with bootstrap credentials
+#
+# CUSTOMIZE: Update BOOTSTRAP_ROLE with your actual role ARN
+
+BOOTSTRAP_ROLE="arn:aws:iam::ACCOUNT_ID:role/bootstrap-role-name"
+
+if [ $# -eq 0 ]; then
+  # No args = open shell with bootstrap credentials
+  aws-vault exec "$AWS_PROFILE" -- bash -c "
+    CREDS=\$(aws sts assume-role --role-arn $BOOTSTRAP_ROLE --role-session-name my-session --output json)
+    export AWS_ACCESS_KEY_ID=\$(echo \$CREDS | jq -r '.Credentials.AccessKeyId')
+    export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
+    export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
+    echo '✅ Bootstrap role assumed: $BOOTSTRAP_ROLE'
+    echo 'AWS_ACCESS_KEY_ID: '\$AWS_ACCESS_KEY_ID
+    exec \$SHELL
+  "
+else
+  # With args = run command with bootstrap credentials
+  aws-vault exec "$AWS_PROFILE" -- bash -c "
+    CREDS=\$(aws sts assume-role --role-arn $BOOTSTRAP_ROLE --role-session-name my-session --output json)
+    export AWS_ACCESS_KEY_ID=\$(echo \$CREDS | jq -r '.Credentials.AccessKeyId')
+    export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
+    export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
+    exec $@
+  "
+fi

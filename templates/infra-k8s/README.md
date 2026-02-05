@@ -25,6 +25,7 @@ git init
 - `flake.nix` - Nix devShell with AWS CLI, kubectl, helm, terraform, etc.
 - `.envrc` - Auto-loads flake via direnv
 - `avx` - aws-vault wrapper script (automatically in PATH)
+- `avx-bootstrap` - Combined MFA + bootstrap role assumption (for clusters requiring bootstrap roles)
 
 ## Usage
 
@@ -41,6 +42,24 @@ avx terraform plan     # run terraform with credentials
 ```
 
 Credentials last 8 hours (configured in `~/.config/aws-vault/config`).
+
+### Bootstrap Role (for clusters requiring it)
+
+Some clusters require assuming a bootstrap role for access. Use `avx-bootstrap`:
+
+**1. Customize the script:**
+Edit `avx-bootstrap` and replace `BOOTSTRAP_ROLE` with your actual role ARN:
+```bash
+BOOTSTRAP_ROLE="arn:aws:iam::590794752210:role/tiledb-bootstrap-role"
+```
+
+**2. Use it:**
+```bash
+./avx-bootstrap                    # opens shell with bootstrap credentials
+./avx-bootstrap kubectl get pods   # run single command
+```
+
+This combines MFA authentication + bootstrap role assumption in one step.
 
 ### Kubernetes
 
