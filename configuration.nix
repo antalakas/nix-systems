@@ -96,6 +96,9 @@
     slurp         # region selection
     satty         # annotation/editing
     wl-clipboard  # clipboard support
+    
+    # File manager
+    doublecmd     # dual-pane file manager
   ];
 
   environment.variables = {
@@ -114,6 +117,9 @@
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
   services.blueman.enable = true;
+
+  # Tailscale VPN
+  services.tailscale.enable = true;
 
   # Enable OpenGL
   hardware.graphics.enable = true;

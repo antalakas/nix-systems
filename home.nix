@@ -39,6 +39,9 @@
     
     # Python dev
     pixi       # modern Python/conda environment manager
+    
+    # Applications
+    spotify
   ];
 
   # ─────────────────────────────────────────────────────────────
