@@ -42,6 +42,11 @@
     
     # Applications
     spotify
+    
+    # Notifications
+    mako       # Wayland notification daemon
+    libnotify  # provides notify-send command
+    papirus-icon-theme  # Beautiful icon theme for notifications
   ];
 
   # ─────────────────────────────────────────────────────────────
@@ -114,6 +119,17 @@
       # Default session duration
       duration=8h
     '';
+  };
+
+  # ─────────────────────────────────────────────────────────────
+  # GTK Theme (for icons in notifications and apps)
+  # ─────────────────────────────────────────────────────────────
+  gtk = {
+    enable = true;
+    iconTheme = {
+      name = "Papirus";
+      package = pkgs.papirus-icon-theme;
+    };
   };
 
   # ─────────────────────────────────────────────────────────────
@@ -279,6 +295,36 @@
       log_level = "WARNING";
       gpu_mirror_graph = true;
     };
+  };
+
+  # ─────────────────────────────────────────────────────────────
+  # Notification Daemon (mako)
+  # ─────────────────────────────────────────────────────────────
+  services.mako = {
+    enable = true;
+    defaultTimeout = 5000;  # 5 seconds
+    backgroundColor = "#1e1e2e";
+    textColor = "#cdd6f4";
+    borderColor = "#89b4fa";
+    borderSize = 2;
+    borderRadius = 10;
+    padding = "15";      # Increased padding for bigger notifications
+    margin = "10";
+    output = "eDP-1";    # Only show notifications on laptop screen (privacy)
+    width = 500;         # Much wider notifications (was 400)
+    height = 200;        # Allow taller notifications for text wrapping
+    
+    # Text size (50% bigger than default)
+    font = "sans-serif 16";  # Default is ~11, this is ~50% bigger
+    
+    # Better text handling
+    markup = true;       # Enable markup for better text formatting
+    format = "<b>%s</b>\\n%b";  # Bold title, body on new line
+    
+    # Icons from apps (Slack, Discord, etc.)
+    icons = true;
+    maxIconSize = 64;    # Bigger icons
+    iconPath = "${pkgs.papirus-icon-theme}/share/icons/Papirus";
   };
 
   # ─────────────────────────────────────────────────────────────
