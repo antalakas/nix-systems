@@ -18,6 +18,13 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Mount old EndeavourOS partition (for extra storage, repos, ollama models)
+  fileSystems."/mnt/endeavouros" = {
+    device = "/dev/disk/by-uuid/9e4b9715-a8d3-4a1d-9ecf-47e392c12d31";
+    fsType = "ext4";
+    options = [ "defaults" ];
+  };
+
   networking.hostName = "nixos"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
