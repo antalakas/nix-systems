@@ -269,6 +269,16 @@ spawn-sh-at-startup "sleep 2 && waybar --config /home/andreas/.config/waybar/con
 // Start NetworkManager applet for tray icon
 spawn-at-startup "nm-applet"
 
+// Startup apps with specific layouts
+spawn-at-startup "slack"
+spawn-at-startup "code-cursor"
+spawn-at-startup "logseq"
+spawn-sh-at-startup "alacritty --title 'Terminal 1'"
+spawn-sh-at-startup "alacritty --title 'Terminal 2'"
+spawn-sh-at-startup "brave --profile-directory='Profile 2' --new-window --class='brave-tiledb'"
+spawn-sh-at-startup "brave --profile-directory='Default' --new-window --class='brave-andreas'"
+spawn-at-startup "tutanota-desktop"
+
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 
@@ -343,6 +353,70 @@ window-rule {
 /-window-rule {
     geometry-corner-radius 12
     clip-to-geometry true
+}
+
+// ─────────────────────────────────────────────────────────────
+// Startup Layout Configuration
+// ─────────────────────────────────────────────────────────────
+
+// WS 1: Slack on laptop (eDP-1)
+window-rule {
+    match app-id="^slack$"
+    open-on-output "eDP-1"
+    open-on-workspace "1"
+    default-column-width { proportion 1.0; }
+}
+
+// WS 1: Cursor on 32" monitor (DP-5)
+window-rule {
+    match app-id="^code-url-handler$|^cursor$"
+    open-on-output "DP-5"
+    open-on-workspace "1"
+    default-column-width { proportion 1.0; }
+}
+
+// WS 1: Logseq on 27" vertical (DP-4) - top position
+window-rule {
+    match app-id="^logseq$"
+    open-on-output "DP-4"
+    open-on-workspace "1"
+}
+
+// WS 1: Terminal 1 on 27" vertical (DP-4) - middle position
+window-rule {
+    match app-id="^Alacritty$" title="^Terminal 1$"
+    open-on-output "DP-4"
+    open-on-workspace "1"
+}
+
+// WS 1: Terminal 2 on 27" vertical (DP-4) - bottom position
+window-rule {
+    match app-id="^Alacritty$" title="^Terminal 2$"
+    open-on-output "DP-4"
+    open-on-workspace "1"
+}
+
+// WS 2: Brave TileDB profile on 32" monitor (DP-5)
+window-rule {
+    match app-id="^brave-tiledb$"
+    open-on-output "DP-5"
+    open-on-workspace "2"
+    default-column-width { proportion 1.0; }
+}
+
+// WS 2: Brave Andreas profile on 27" vertical (DP-4)
+window-rule {
+    match app-id="^brave-andreas$"
+    open-on-output "DP-4"
+    open-on-workspace "2"
+    default-column-width { proportion 1.0; }
+}
+
+// WS 2: Tutanota on 27" vertical (DP-4)
+window-rule {
+    match app-id="^tutanota-desktop$"
+    open-on-output "DP-4"
+    open-on-workspace "2"
 }
 
 binds {

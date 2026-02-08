@@ -42,6 +42,7 @@
     
     # Applications
     spotify
+    tutanota-desktop  # Tuta Mail client
     
     # Notifications
     mako       # Wayland notification daemon
