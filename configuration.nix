@@ -70,6 +70,14 @@
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
+  
+  # Allow insecure packages (required for sublime4)
+  nixpkgs.config.permittedInsecurePackages = [
+    "openssl-1.1.1w"  # Required by Sublime Text 4
+  ];
+  
+  # Enable user namespaces (required for Electron apps like Tutanota)
+  security.unprivilegedUsernsClone = true;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
@@ -127,6 +135,13 @@
 
   # Tailscale VPN
   services.tailscale.enable = true;
+
+  # 1Password (for browser extension integration)
+  programs._1password.enable = true;
+  programs._1password-gui = {
+    enable = true;
+    polkitPolicyOwners = [ "andreas" ];
+  };
 
   # Enable OpenGL
   hardware.graphics.enable = true;
@@ -194,7 +209,7 @@
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd niri-session";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd niri-session";
         user = "greeter";
       };
     };

@@ -277,7 +277,7 @@ spawn-sh-at-startup "alacritty --title 'Terminal 1'"
 spawn-sh-at-startup "alacritty --title 'Terminal 2'"
 spawn-sh-at-startup "brave --profile-directory='Profile 2' --new-window --class='brave-tiledb'"
 spawn-sh-at-startup "brave --profile-directory='Default' --new-window --class='brave-andreas'"
-spawn-at-startup "tutanota-desktop"
+spawn-at-startup "tutanota-wrapper"
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"

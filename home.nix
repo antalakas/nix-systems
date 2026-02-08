@@ -10,6 +10,11 @@
 
   # Let Home Manager manage itself
   programs.home-manager.enable = true;
+  
+  # Ensure ~/.local/bin is in PATH (for wrapper scripts)
+  home.sessionVariables = {
+    PATH = "$HOME/.local/bin:$PATH";
+  };
 
   # ─────────────────────────────────────────────────────────────
   # User Packages (installed for this user only)
@@ -43,6 +48,8 @@
     # Applications
     spotify
     tutanota-desktop  # Tuta Mail client
+    _1password-gui    # 1Password password manager
+    sublime4          # Sublime Text editor
     
     # Notifications
     mako       # Wayland notification daemon
@@ -303,29 +310,47 @@
   # ─────────────────────────────────────────────────────────────
   services.mako = {
     enable = true;
-    defaultTimeout = 5000;  # 5 seconds
-    backgroundColor = "#1e1e2e";
-    textColor = "#cdd6f4";
-    borderColor = "#89b4fa";
-    borderSize = 2;
-    borderRadius = 10;
-    padding = "15";      # Increased padding for bigger notifications
-    margin = "10";
-    output = "eDP-1";    # Only show notifications on laptop screen (privacy)
-    width = 500;         # Much wider notifications (was 400)
-    height = 200;        # Allow taller notifications for text wrapping
     
-    # Text size (50% bigger than default)
-    font = "sans-serif 16";  # Default is ~11, this is ~50% bigger
+    # All settings must be in 'settings' block now
+    settings = {
+      # Appearance
+      background-color = "#1e1e2e";
+      text-color = "#cdd6f4";
+      border-color = "#89b4fa";
+      border-size = 2;
+      border-radius = 10;
+      padding = "15";
+      margin = "10";
+      
+      # Size
+      width = 500;
+      height = 200;
+      
+      # Output
+      output = "eDP-1";  # Only show on laptop screen (privacy)
+      
+      # Text
+      font = "sans-serif 16";  # 50% bigger than default
+      markup = true;
+      format = "<b>%s</b>\\n%b";  # Bold title, body on new line
+      
+      # Timeout
+      default-timeout = 5000;  # 5 seconds
+      
+      # Icons
+      icons = true;
+      max-icon-size = 64;
+      icon-path = "${pkgs.papirus-icon-theme}/share/icons/Papirus";
+    };
     
-    # Better text handling
-    markup = true;       # Enable markup for better text formatting
-    format = "<b>%s</b>\\n%b";  # Bold title, body on new line
-    
-    # Icons from apps (Slack, Discord, etc.)
-    icons = true;
-    maxIconSize = 64;    # Bigger icons
-    iconPath = "${pkgs.papirus-icon-theme}/share/icons/Papirus";
+    # Urgency-specific colors
+    extraConfig = ''
+      [urgency=low]
+      border-color=#89dceb
+      
+      [urgency=high]
+      border-color=#f38ba8
+    '';
   };
 
   # ─────────────────────────────────────────────────────────────
@@ -345,5 +370,31 @@
       source = ./dotfiles/waybar/niri-workspaces.sh;
       executable = true;
     };
+  };
+  
+  # Create wrapper script for Tutanota (fixes launch from any directory)
+  home.file.".local/bin/tutanota-wrapper" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      cd "$HOME"
+      exec tutanota-desktop --no-sandbox "$@"
+    '';
+  };
+  
+  # Override Tutanota desktop entry to use wrapper (force overwrite)
+  xdg.dataFile."applications/tutanota-desktop.desktop" = {
+    text = ''
+      [Desktop Entry]
+      Name=Tutanota
+      GenericName=Email Client
+      Comment=Secure email client
+      Exec=/home/andreas/.local/bin/tutanota-wrapper %U
+      Icon=tutanota-desktop
+      Terminal=false
+      Type=Application
+      Categories=Network;Email;
+      MimeType=x-scheme-handler/mailto;
+    '';
   };
 }
