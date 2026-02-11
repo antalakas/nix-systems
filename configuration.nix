@@ -136,6 +136,12 @@
   # Tailscale VPN
   services.tailscale.enable = true;
 
+  # plocate (fast file location)
+  services.locate = {
+    enable = true;
+    package = pkgs.plocate;
+  };
+
   # 1Password (for browser extension integration)
   programs._1password.enable = true;
   programs._1password-gui = {

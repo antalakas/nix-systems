@@ -27,6 +27,7 @@
     bat        # modern cat
     fzf        # fuzzy finder
     lazygit    # git TUI
+    plocate    # faster locate for file searching
     
     # Kubernetes utilities (global, version-agnostic)
     kubectl    # k8s CLI
@@ -50,6 +51,9 @@
     tutanota-desktop  # Tuta Mail client
     _1password-gui    # 1Password password manager
     sublime4          # Sublime Text editor
+    xournalpp         # PDF annotation and signature tool
+    pinta             # Quick image editor for cropping and format conversion
+    gthumb            # Image viewer and organizer with basic editing
     
     # Notifications
     mako       # Wayland notification daemon
@@ -384,6 +388,7 @@
   
   # Override Tutanota desktop entry to use wrapper (force overwrite)
   xdg.dataFile."applications/tutanota-desktop.desktop" = {
+    force = true;  # Prevent backup collisions
     text = ''
       [Desktop Entry]
       Name=Tutanota
