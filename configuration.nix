@@ -151,6 +151,15 @@
 
   # Enable OpenGL
   hardware.graphics.enable = true;
+  hardware.graphics.enable32Bit = true;  # 32-bit support for Steam games
+
+  # Steam
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true;  # Steam Remote Play
+    dedicatedServer.openFirewall = true;  # Source dedicated servers
+    gamescopeSession.enable = true;  # GameScope compositor for better gaming
+  };
 
   # NVIDIA drivers
   services.xserver.videoDrivers = [ "nvidia" ];

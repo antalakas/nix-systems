@@ -27,6 +27,7 @@
     bat        # modern cat
     fzf        # fuzzy finder
     lazygit    # git TUI
+    gh         # GitHub CLI
     plocate    # faster locate for file searching
     
     # Kubernetes utilities (global, version-agnostic)
