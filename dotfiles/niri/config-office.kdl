@@ -88,26 +88,28 @@ output "DP-8" {
     position x=-1440 y=0
 }
 
-// A: DP-6 - 27" horizontal CENTER (3840x2160)
+// A: DP-6 - 27" horizontal CENTER (2560x1440 for readable UI)
 output "DP-6" {
+    mode "2560x1440@59.951"
     scale 1.0
     transform "normal"
     position x=0 y=0
 }
 
-// B: DP-2 - 27" vertical RIGHT (3840x2160 rotated = 2160x3840 logical)
+// B: DP-2 - 27" vertical RIGHT (2560x1440 rotated = 1440x2560 logical)
 output "DP-2" {
+    mode "2560x1440@59.951"
     scale 1.0
     transform "90"
-    position x=3840 y=0
+    position x=2560 y=0
 }
 
 // D: Laptop under A (centered)
-// DP-6 is 2160 tall, laptop is 1200 logical (2400/2). Center under 3840: offset = (3840-1920)/2 = 960
+// DP-6 is 2560x1440, laptop is 1920x1200. Center: x=(2560-1920)/2=320, y=1440
 output "eDP-1" {
     scale 2
     transform "normal"
-    position x=960 y=2160
+    position x=320 y=1440
 }
 
 

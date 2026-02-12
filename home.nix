@@ -47,12 +47,16 @@
     # Python dev
     pixi       # modern Python/conda environment manager
     
+    # Node.js (npm, npx)
+    nodejs_22
+    
     # Applications
     spotify
     tutanota-desktop  # Tuta Mail client
     _1password-gui    # 1Password password manager
     sublime4          # Sublime Text editor
     xournalpp         # PDF annotation and signature tool
+    foliate           # EPUB ebook reader
     pinta             # Quick image editor for cropping and format conversion
     gthumb            # Image viewer and organizer with basic editing
     
@@ -375,6 +379,9 @@
       executable = true;
     };
     
+    # Pragmasevka font
+    ".local/share/fonts/Pragmasevka".source = ./fonts/Pragmasevka;
+    
     # Waybar config
     ".config/waybar/config.json".source = ./dotfiles/waybar/config.json;
     ".config/waybar/style.css".source = ./dotfiles/waybar/style.css;
@@ -383,6 +390,13 @@
       executable = true;
     };
   };
+  
+  # Refresh font cache after installing Pragmasevka
+  home.activation.refreshFonts = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    if [ -d "$HOME/.local/share/fonts/Pragmasevka" ]; then
+      $DRY_RUN_CMD ${pkgs.fontconfig}/bin/fc-cache -f
+    fi
+  '';
   
   # Set default profile on activation (won't override if symlink already exists)
   home.activation.niriDefaultProfile = lib.hm.dag.entryAfter ["writeBoundary"] ''

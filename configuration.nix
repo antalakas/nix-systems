@@ -64,7 +64,7 @@
     shell = pkgs.zsh;
     isNormalUser = true;
     description = "andreas";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "docker" ];
     packages = with pkgs; [];
   };
 
@@ -132,6 +132,15 @@
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
   services.blueman.enable = true;
+
+  # Docker (data root on EndeavourOS partition for images/containers)
+  virtualisation.docker = {
+    enable = true;
+    enableOnBoot = true;
+    daemon.settings = {
+      data-root = "/mnt/endeavouros/var/lib/docker";
+    };
+  };
 
   # Tailscale VPN
   services.tailscale.enable = true;
