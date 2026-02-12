@@ -42,7 +42,7 @@ rm -f "$CONFIG_DIR/config.kdl"
 ln -s "$CONFIG_DIR/config-$PROFILE.kdl" "$CONFIG_DIR/config.kdl"
 
 echo "✅ Switched to '$PROFILE' profile"
-echo "🔄 Reload niri with: niri msg action reload-config"
+echo "🔄 Reload niri with: niri msg action load-config-file"
 echo "   (or Mod+Shift+C, or log out/in)"
 
 # Validate the config
