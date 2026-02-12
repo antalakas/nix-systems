@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # Home Manager needs this
@@ -365,8 +365,15 @@
     # Powerlevel10k config (if you have one)
     # ".p10k.zsh".source = ./dotfiles/p10k.zsh;
     
-    # Niri config
-    ".config/niri/config.kdl".source = ./dotfiles/niri/config.kdl;
+    # Niri profiles (both available, switch with niri-profile command)
+    ".config/niri/config-home.kdl".source = ./dotfiles/niri/config-home.kdl;
+    ".config/niri/config-office.kdl".source = ./dotfiles/niri/config-office.kdl;
+    
+    # Niri profile switcher
+    ".local/bin/niri-profile" = {
+      source = ./dotfiles/niri/switch-profile.sh;
+      executable = true;
+    };
     
     # Waybar config
     ".config/waybar/config.json".source = ./dotfiles/waybar/config.json;
@@ -376,6 +383,14 @@
       executable = true;
     };
   };
+  
+  # Set default profile on activation (won't override if symlink already exists)
+  home.activation.niriDefaultProfile = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    if [ ! -e "$HOME/.config/niri/config.kdl" ]; then
+      $DRY_RUN_CMD ln -s "$HOME/.config/niri/config-home.kdl" "$HOME/.config/niri/config.kdl"
+      echo "Created default niri profile: home"
+    fi
+  '';
   
   # Create wrapper script for Tutanota (fixes launch from any directory)
   home.file.".local/bin/tutanota-wrapper" = {
