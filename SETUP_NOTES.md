@@ -190,6 +190,25 @@ nmcli connection down tiledb-wg
 
 Also available via nm-applet tray icon.
 
+## Bluetooth Pairing
+
+When pairing a new device via `bluetoothctl`:
+
+```bash
+bluetoothctl
+power on
+agent on
+default-agent
+scan on
+# wait for device to appear, then:
+scan off
+pair <MAC>          # e.g. pair 34:88:5D:12:AB:CD
+trust <MAC>
+connect <MAC>
+```
+
+Example with a real MAC: `pair 34:88:5D:12:AB:CD` then `trust` and `connect` with the same address.
+
 ## Screenshots (Mod+A)
 
 Wayland screenshot tools: grim, slurp, satty
