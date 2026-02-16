@@ -106,6 +106,12 @@
     discord
     logseq
     
+    # CUDA toolkit
+    cudatoolkit
+    
+    # DNS tools (nslookup, dig)
+    dnsutils
+    
     # Screenshot tools (Flameshot alternative for Wayland)
     grim          # screenshot capture
     slurp         # region selection
