@@ -29,6 +29,7 @@
     lazygit    # git TUI
     gh         # GitHub CLI
     plocate    # faster locate for file searching
+    glow       # terminal markdown renderer
     
     # Kubernetes utilities (global, version-agnostic)
     kubectl    # k8s CLI
@@ -59,6 +60,9 @@
     foliate           # EPUB ebook reader
     pinta             # Quick image editor for cropping and format conversion
     gthumb            # Image viewer and organizer with basic editing
+    obs-studio        # Screen recording and streaming
+    wf-recorder       # Lightweight CLI screen recorder for Wayland
+    mpv               # Lightweight video player
     
     # Notifications
     mako       # Wayland notification daemon
