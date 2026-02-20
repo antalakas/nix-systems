@@ -30,6 +30,8 @@
     gh         # GitHub CLI
     plocate    # faster locate for file searching
     glow       # terminal markdown renderer
+    zip        # create zip archives
+    unzip      # extract zip archives
     
     # Kubernetes utilities (global, version-agnostic)
     kubectl    # k8s CLI
