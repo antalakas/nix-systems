@@ -66,6 +66,9 @@
     wf-recorder       # Lightweight CLI screen recorder for Wayland
     mpv               # Lightweight video player
     
+    # Wallpaper
+    swaybg     # Wayland wallpaper tool
+    
     # Notifications
     mako       # Wayland notification daemon
     libnotify  # provides notify-send command
@@ -387,6 +390,9 @@
     
     # Pragmasevka font
     ".local/share/fonts/Pragmasevka".source = ./fonts/Pragmasevka;
+    
+    # Wallpaper
+    ".config/wallpapers/microgpt.png".source = ./dotfiles/wallpapers/microgpt.png;
     
     # Waybar config
     ".config/waybar/config.json".source = ./dotfiles/waybar/config.json;

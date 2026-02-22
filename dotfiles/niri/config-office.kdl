@@ -284,6 +284,9 @@ spawn-sh-at-startup "sleep 2 && waybar --config /home/andreas/.config/waybar/con
 // Start NetworkManager applet for tray icon
 spawn-at-startup "nm-applet"
 
+// Wallpaper on 27" center monitor and laptop
+spawn-sh-at-startup "swaybg -o DP-6 -i ~/.config/wallpapers/microgpt.png -m fill & swaybg -o eDP-1 -i ~/.config/wallpapers/microgpt.png -m fill"
+
 // Startup apps with specific layouts
 spawn-at-startup "slack"
 spawn-at-startup "code-cursor"
