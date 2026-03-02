@@ -73,7 +73,8 @@
   
   # Allow insecure packages (required for sublime4)
   nixpkgs.config.permittedInsecurePackages = [
-    "openssl-1.1.1w"  # Required by Sublime Text 4
+    "openssl-1.1.1w"         # Required by Sublime Text 4
+    "beekeeper-studio-5.5.3" # Electron 32 EOL
   ];
   
   # Enable user namespaces (required for Electron apps like Tutanota)
@@ -109,14 +110,22 @@
     # CUDA toolkit
     cudatoolkit
     
-    # DNS tools (nslookup, dig)
-    dnsutils
+    # DNS/network tools
+    dnsutils   # nslookup, dig
+    nmap       # network scanner
+    
+    # Build tools
+    gnumake
+    gcc
     
     # Screenshot tools (Flameshot alternative for Wayland)
     grim          # screenshot capture
     slurp         # region selection
     satty         # annotation/editing
     wl-clipboard  # clipboard support
+    
+    # Brightness control
+    brightnessctl
     
     # File manager
     doublecmd     # dual-pane file manager
