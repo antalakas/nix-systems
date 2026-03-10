@@ -65,6 +65,7 @@
     obs-studio        # Screen recording and streaming
     wf-recorder       # Lightweight CLI screen recorder for Wayland
     mpv               # Lightweight video player
+    ffmpeg            # Video/audio tools (ffmpeg, ffprobe, ffplay)
     jetbrains.datagrip # Database IDE
     beekeeper-studio   # SQL editor and database manager
     antigravity        # Google Agentic IDE (Gemini)

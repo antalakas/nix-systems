@@ -26,6 +26,9 @@
   };
 
   networking.hostName = "nixos"; # Define your hostname.
+  networking.extraHosts = ''
+    172.21.255.200 console.tiledb.example.com api.tiledb.example.com jupyterhub.tiledb.example.com oauth2.tiledb.example.com
+  '';
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
   # Configure network proxy if necessary
@@ -74,7 +77,7 @@
   # Allow insecure packages (required for sublime4)
   nixpkgs.config.permittedInsecurePackages = [
     "openssl-1.1.1w"         # Required by Sublime Text 4
-    "beekeeper-studio-5.5.3" # Electron 32 EOL
+    "beekeeper-studio-5.5.7" # Electron 32 EOL
   ];
   
   # Enable user namespaces (required for Electron apps like Tutanota)
@@ -159,6 +162,7 @@
 
   # Tailscale VPN
   services.tailscale.enable = true;
+  networking.firewall.checkReversePath = false;
 
   # plocate (fast file location)
   services.locate = {
