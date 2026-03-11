@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Run Claude Code in a sandboxed Docker container
+# Usage: claude-sandbox [project-dir] [-- claude-args...]
+#
+# Examples:
+#   claude-sandbox                          # current directory
+#   claude-sandbox ~/workspace/myproject    # specific project
+#   claude-sandbox . -- --continue          # pass args to claude
+#   claude-sandbox . -- "Fix the login bug" # pass a prompt
+
+set -e
+
+IMAGE_NAME="claude-code-sandbox"
+PROJECT_DIR="${1:-.}"
+
+# Resolve to absolute path
+PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+
+# Shift past project dir if provided, then past -- separator
+if [ "$1" ] && [ "$1" != "--" ]; then
+    shift
+fi
+if [ "$1" = "--" ]; then
+    shift
+fi
+
+# Build image if it doesn't exist
+if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
+    echo "Building Claude Code sandbox image (first time only)..."
+    # Resolve symlink (Nix store) and build from the actual directory
+    DOCKERFILE="$(readlink -f ~/.config/claude-code/Dockerfile)"
+    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
+fi
+
+echo "🔒 Starting Claude Code in sandbox"
+echo "   Project: $PROJECT_DIR"
+echo "   Only this directory is accessible to Claude"
+echo ""
+
+DOCKER_ARGS=(
+    -it --rm
+    -v "$PROJECT_DIR:/workspace"
+    -v "$HOME/.claude:/home/node/.claude"
+    -v "$HOME/.claude.json:/home/node/.claude.json"
+    -v "$HOME/.config/claude:/home/node/.config/claude"
+    --network=host
+)
+
+# Pass API key if set, otherwise browser auth will be used
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    DOCKER_ARGS+=(-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
+fi
+
+exec docker run "${DOCKER_ARGS[@]}" \
+    "$IMAGE_NAME" \
+    --dangerously-skip-permissions \
+    "$@"

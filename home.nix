@@ -30,6 +30,7 @@
     gh         # GitHub CLI
     plocate    # faster locate for file searching
     glow       # terminal markdown renderer
+    claude-code # Anthropic Claude Code CLI
     zip        # create zip archives
     unzip      # extract zip archives
     
@@ -397,6 +398,13 @@
     
     # Wallpaper
     ".config/wallpapers/microgpt.png".source = ./dotfiles/wallpapers/microgpt.png;
+    
+    # Claude Code sandbox
+    ".config/claude-code/Dockerfile".source = ./dotfiles/claude-code/Dockerfile;
+    ".local/bin/claude-sandbox" = {
+      source = ./dotfiles/claude-code/claude-sandbox;
+      executable = true;
+    };
     
     # Waybar config
     ".config/waybar/config.json".source = ./dotfiles/waybar/config.json;
