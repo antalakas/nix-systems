@@ -33,6 +33,7 @@
     claude-code # Anthropic Claude Code CLI
     zip        # create zip archives
     unzip      # extract zip archives
+    sox        # audio processing CLI
     
     # Kubernetes utilities (global, version-agnostic)
     kubectl    # k8s CLI

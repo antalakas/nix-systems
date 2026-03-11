@@ -129,6 +129,9 @@
     
     # Brightness control
     brightnessctl
+
+    # Audio processing (used by Claude Code voice mode)
+    sox
     
     # File manager
     doublecmd     # dual-pane file manager
