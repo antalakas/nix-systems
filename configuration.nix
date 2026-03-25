@@ -27,7 +27,7 @@
 
   networking.hostName = "nixos"; # Define your hostname.
   networking.extraHosts = ''
-    172.21.255.200 console.tiledb.example.com api.tiledb.example.com jupyterhub.tiledb.example.com oauth2.tiledb.example.com
+    172.21.255.200 app.tiledb.example.com documentation.tiledb.example.com api.tiledb.example.com jupyterhub.tiledb.example.com oauth2.tiledb.example.com
   '';
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
@@ -133,6 +133,10 @@
     # Audio processing (used by Claude Code voice mode)
     sox
     
+    # YubiKey
+    yubioath-flutter   # Yubico Authenticator (GUI)
+    yubikey-manager    # ykman CLI
+    
     # File manager
     doublecmd     # dual-pane file manager
   ];
@@ -166,6 +170,10 @@
   # Tailscale VPN
   services.tailscale.enable = true;
   networking.firewall.checkReversePath = false;
+
+  # YubiKey smartcard support
+  services.pcscd.enable = true;
+  services.udev.packages = [ pkgs.yubikey-personalization ];
 
   # plocate (fast file location)
   services.locate = {

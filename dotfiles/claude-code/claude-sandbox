@@ -34,12 +34,13 @@ fi
 
 echo "🔒 Starting Claude Code in sandbox"
 echo "   Project: $PROJECT_DIR"
-echo "   Only this directory is accessible to Claude"
+echo "   Reference: /ref/team-monitor (read-only)"
 echo ""
 
 DOCKER_ARGS=(
     -it --rm
     -v "$PROJECT_DIR:/workspace"
+    -v "/mnt/endeavouros/home/andreas/workspace/andreas/team-monitor:/ref/team-monitor:ro"
     -v "$HOME/.claude:/home/node/.claude"
     -v "$HOME/.claude.json:/home/node/.claude.json"
     -v "$HOME/.config/claude:/home/node/.config/claude"
