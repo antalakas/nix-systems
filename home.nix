@@ -1,6 +1,7 @@
 { config, pkgs, lib, ... }:
 
 {
+  imports = [ ./neovim.nix ];
   # Home Manager needs this
   home.username = "andreas";
   home.homeDirectory = "/home/andreas";
