@@ -403,6 +403,7 @@
     
     # Claude Code sandbox
     ".config/claude-code/Dockerfile".source = ./dotfiles/claude-code/Dockerfile;
+    ".config/claude-code/refs.conf".source = ./dotfiles/claude-code/refs.conf;
     ".local/bin/claude-sandbox" = {
       source = ./dotfiles/claude-code/claude-sandbox;
       executable = true;
