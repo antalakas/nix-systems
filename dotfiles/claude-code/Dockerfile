@@ -16,6 +16,7 @@ RUN mkdir -p /home/node/.local/bin \
 
 USER node
 ENV PATH="/home/node/.local/bin:$PATH"
+ENV TERM=xterm-256color
 WORKDIR /workspace
 
 ENTRYPOINT ["/usr/local/bin/claude"]

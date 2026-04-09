@@ -101,6 +101,7 @@
     plugins.neo-tree.enable = true;
 
     # ── UI ───────────────────────────────────────────────────────
+    plugins.web-devicons.enable = true;
     plugins.lualine.enable = true;
     plugins.which-key.enable = true;
     plugins.gitsigns.enable = true;

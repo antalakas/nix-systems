@@ -1,5 +1,23 @@
 { config, pkgs, lib, ... }:
 
+let
+  # Change this to switch Alacritty themes.
+  # Good options from alacritty-theme:
+  # - tokyo_night_storm
+  # - catppuccin_mocha
+  # - kanagawa_wave
+  # - nightfox
+  # - rose_pine
+  # - github_dark
+  # - gruvbox_dark
+  alacrittyTheme = "rose_pine";
+  alacrittyThemes = pkgs.fetchFromGitHub {
+    owner = "alacritty";
+    repo = "alacritty-theme";
+    rev = "02ed0a1826d008885c0cd4589c9eff892773a62a";
+    hash = "sha256-ljTdsfd/bClvnr2DlndEreNuLZ705wo+XSCvkUBVw8Y=";
+  };
+in
 {
   imports = [ ./neovim.nix ];
   # Home Manager needs this
@@ -31,7 +49,6 @@
     gh         # GitHub CLI
     plocate    # faster locate for file searching
     glow       # terminal markdown renderer
-    claude-code # Anthropic Claude Code CLI
     zip        # create zip archives
     unzip      # extract zip archives
     sox        # audio processing CLI
@@ -69,9 +86,9 @@
     wf-recorder       # Lightweight CLI screen recorder for Wayland
     mpv               # Lightweight video player
     ffmpeg            # Video/audio tools (ffmpeg, ffprobe, ffplay)
-    jetbrains.datagrip # Database IDE
-    beekeeper-studio   # SQL editor and database manager
+    dbeaver-bin        # SQL editor and database manager
     antigravity        # Google Agentic IDE (Gemini)
+    zoom-us            # Zoom video conferencing
     
     # Wallpaper
     swaybg     # Wayland wallpaper tool
@@ -95,6 +112,7 @@
   # ─────────────────────────────────────────────────────────────
   programs.git = {
     enable = true;
+    signing.format = "openpgp";
     settings = {
       user.name = "antalakas";
       user.email = "antalakas@gmail.com";
@@ -159,6 +177,7 @@
   # ─────────────────────────────────────────────────────────────
   gtk = {
     enable = true;
+    gtk4.theme = config.gtk.theme;
     iconTheme = {
       name = "Papirus";
       package = pkgs.papirus-icon-theme;
@@ -171,6 +190,7 @@
   programs.alacritty = {
     enable = true;
     settings = {
+      general.import = [ "${alacrittyThemes}/themes/${alacrittyTheme}.toml" ];
       terminal.shell.program = "${pkgs.zsh}/bin/zsh";
       
       window = {
@@ -192,42 +212,6 @@
         };
         bold.family = "Iosevka Nerd Font";
         italic.family = "Iosevka Nerd Font";
-      };
-      
-      # Tokyo Night theme
-      colors = {
-        primary = {
-          background = "#1a1b26";
-          foreground = "#c0caf5";
-        };
-        cursor = {
-          text = "#1a1b26";
-          cursor = "#c0caf5";
-        };
-        selection = {
-          text = "#c0caf5";
-          background = "#33467c";
-        };
-        normal = {
-          black = "#15161e";
-          red = "#f7768e";
-          green = "#9ece6a";
-          yellow = "#e0af68";
-          blue = "#7aa2f7";
-          magenta = "#bb9af7";
-          cyan = "#7dcfff";
-          white = "#a9b1d6";
-        };
-        bright = {
-          black = "#414868";
-          red = "#f7768e";
-          green = "#9ece6a";
-          yellow = "#e0af68";
-          blue = "#7aa2f7";
-          magenta = "#bb9af7";
-          cyan = "#7dcfff";
-          white = "#c0caf5";
-        };
       };
       
       cursor = {
@@ -403,7 +387,6 @@
     
     # Claude Code sandbox
     ".config/claude-code/Dockerfile".source = ./dotfiles/claude-code/Dockerfile;
-    ".config/claude-code/refs.conf".source = ./dotfiles/claude-code/refs.conf;
     ".local/bin/claude-sandbox" = {
       source = ./dotfiles/claude-code/claude-sandbox;
       executable = true;

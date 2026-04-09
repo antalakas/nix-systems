@@ -73,11 +73,16 @@
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
+
+  nixpkgs.overlays = [
+    (final: prev: {
+      code-cursor = final.callPackage ./pkgs/code-cursor/package.nix { };
+    })
+  ];
   
   # Allow insecure packages (required for sublime4)
   nixpkgs.config.permittedInsecurePackages = [
     "openssl-1.1.1w"         # Required by Sublime Text 4
-    "beekeeper-studio-5.5.7" # Electron 32 EOL
   ];
   
   # Enable user namespaces (required for Electron apps like Tutanota)
@@ -170,6 +175,26 @@
   # Tailscale VPN
   services.tailscale.enable = true;
   networking.firewall.checkReversePath = false;
+
+  # Printing (Xerox B210 at 192.168.10.46)
+  services.printing = {
+    enable = true;
+    drivers = [ pkgs.gutenprint pkgs.gutenprintBin ];
+  };
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+  };
+  hardware.printers.ensurePrinters = [
+    {
+      name = "XeroxB210";
+      description = "Xerox B210";
+      deviceUri = "ipp://192.168.10.46/ipp/print";
+      model = "everywhere";
+      ppdOptions.PageSize = "A4";
+    }
+  ];
+  hardware.printers.ensureDefaultPrinter = "XeroxB210";
 
   # YubiKey smartcard support
   services.pcscd.enable = true;
