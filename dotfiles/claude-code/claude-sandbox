@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # Run Claude Code in a sandboxed Docker container
-# Usage: claude-sandbox [--profile NAME] [project-dir] [-- claude-args...]
+# Usage: claude-sandbox [--profile NAME] [--rebuild] [project-dir] [-- claude-args...]
 #
 # Examples:
 #   claude-sandbox                              # current dir, default (work) profile
+#   claude-sandbox --rebuild                    # rebuild image to get latest version
 #   claude-sandbox --profile personal           # current dir, personal profile
 #   claude-sandbox --profile personal ~/proj    # specific project, personal profile
 #   claude-sandbox . -- --continue              # pass args to claude
 #   claude-sandbox . -- "Fix the login bug"     # pass a prompt
 #
 # Profiles live in ~/.claude-profiles/<name>/ with .claude/ and .claude.json
+# Mempalace data is kept in per-profile Docker volumes:
+#   claude-code-sandbox-<profile>-mempalace -> /home/node/.mempalace
+#   claude-code-sandbox-<profile>-cache     -> /home/node/.cache
 # To set up a new profile:
 #   mkdir -p ~/.claude-profiles/personal/.claude
 #   claude-sandbox --profile personal   # then run /login inside
@@ -18,12 +22,24 @@ set -e
 
 IMAGE_NAME="claude-code-sandbox"
 PROFILE="work"
+REBUILD=false
 
-# Parse --profile flag
-if [ "$1" = "--profile" ]; then
-    PROFILE="$2"
-    shift 2
-fi
+# Parse flags
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --profile)
+            PROFILE="$2"
+            shift 2
+            ;;
+        --rebuild)
+            REBUILD=true
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
 PROJECT_DIR="${1:-.}"
 
@@ -38,6 +54,16 @@ if [ "$1" = "--" ]; then
     shift
 fi
 
+# Resolve persistent Mempalace volumes based on profile. The .mempalace
+# volume stores ChromaDB; the cache volume stores the default embedding model.
+SAFE_PROFILE="$(printf '%s' "$PROFILE" | tr -c '[:alnum:]_.-' '-')"
+MEMPALACE_VOLUME_PREFIX="claude-code-sandbox-$SAFE_PROFILE"
+MEMPALACE_DIR="/home/node/.mempalace"
+MEMPALACE_CACHE_DIR="/home/node/.cache"
+MEMPALACE_VOLUME="${CLAUDE_SANDBOX_MEMPALACE_VOLUME:-$MEMPALACE_VOLUME_PREFIX-mempalace}"
+MEMPALACE_CACHE_VOLUME="${CLAUDE_SANDBOX_MEMPALACE_CACHE_VOLUME:-$MEMPALACE_VOLUME_PREFIX-cache}"
+MEMPALACE_PALACE_PATH="$MEMPALACE_DIR/palace"
+
 # Resolve credential paths based on profile
 PROFILE_DIR="$HOME/.claude-profiles/$PROFILE"
 if [ -d "$PROFILE_DIR" ]; then
@@ -46,23 +72,36 @@ if [ -d "$PROFILE_DIR" ]; then
     mkdir -p "$CLAUDE_DIR"
     # Ensure .claude.json exists as a file (Docker mounts missing files as directories)
     [ -f "$CLAUDE_JSON" ] || echo '{}' > "$CLAUDE_JSON"
+    # Seed settings.json with defaults if missing
+    [ -f "$CLAUDE_DIR/settings.json" ] || cat > "$CLAUDE_DIR/settings.json" << 'SETTINGS'
+{
+  "model": "claude-opus-4-7",
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
+  "skipDangerousModePermissionPrompt": true
+}
+SETTINGS
 else
     # Fallback to default locations (backwards compatible)
     CLAUDE_DIR="$HOME/.claude"
     CLAUDE_JSON="$HOME/.claude.json"
 fi
 
-# Build image if it doesn't exist
-if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
+# Build image if it doesn't exist, or if --rebuild was requested
+DOCKERFILE="$(readlink -f ~/.config/claude-code/Dockerfile)"
+if $REBUILD; then
+    echo "Rebuilding Claude Code sandbox image..."
+    docker build --no-cache -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
+elif ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
     echo "Building Claude Code sandbox image (first time only)..."
-    # Resolve symlink (Nix store) and build from the actual directory
-    DOCKERFILE="$(readlink -f ~/.config/claude-code/Dockerfile)"
     docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
 fi
 
 echo "🔒 Starting Claude Code in sandbox"
 echo "   Profile: $PROFILE"
 echo "   Project: $PROJECT_DIR"
+echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
+echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
 echo ""
 
 DOCKER_ARGS=(
@@ -71,6 +110,13 @@ DOCKER_ARGS=(
     -v "$CLAUDE_DIR:/home/node/.claude"
     -v "$CLAUDE_JSON:/home/node/.claude.json"
     -v "$HOME/.config/claude:/home/node/.config/claude"
+    -v "$MEMPALACE_VOLUME:$MEMPALACE_DIR"
+    -v "$MEMPALACE_CACHE_VOLUME:$MEMPALACE_CACHE_DIR"
+    -e MEMPALACE_PALACE_PATH="$MEMPALACE_PALACE_PATH"
+    -e MEMPAL_DIR="/workspace"
+    -e XDG_CACHE_HOME="$MEMPALACE_CACHE_DIR"
+    -e HF_HOME="$MEMPALACE_CACHE_DIR/huggingface"
+    -e SENTENCE_TRANSFORMERS_HOME="$MEMPALACE_CACHE_DIR/sentence-transformers"
     --network=host
 )
 

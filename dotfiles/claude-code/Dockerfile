@@ -4,19 +4,22 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     bash \
+    python3 \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://claude.ai/install.sh | bash \
-    && cp /root/.local/bin/claude /usr/local/bin/claude \
-    && chmod +x /usr/local/bin/claude
+ARG CLAUDE_CODE_VERSION=latest
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
-RUN mkdir -p /home/node/.local/bin \
-    && cp /usr/local/bin/claude /home/node/.local/bin/claude \
-    && chown -R node:node /home/node/.local
+RUN python3 -m venv /opt/mempalace \
+    && /opt/mempalace/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/mempalace/bin/pip install --no-cache-dir mempalace \
+    && ln -s /opt/mempalace/bin/mempalace /usr/local/bin/mempalace \
+    && mkdir -p /home/node/.mempalace /home/node/.cache \
+    && chown -R node:node /home/node/.mempalace /home/node/.cache
 
 USER node
-ENV PATH="/home/node/.local/bin:$PATH"
-ENV TERM=xterm-256color
+ENV TERM=xterm-256color COLORTERM=truecolor PATH="/opt/mempalace/bin:${PATH}"
 WORKDIR /workspace
 
-ENTRYPOINT ["/usr/local/bin/claude"]
+ENTRYPOINT ["claude"]
