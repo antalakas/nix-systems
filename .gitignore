@@ -10,3 +10,6 @@ wireguard-secrets.nix
 
 # Private sandbox reference mounts (machine-specific)
 dotfiles/claude-code/refs.conf
+
+# Large binary blobs (not suitable for git)
+pkgs/oda-file-converter/*.deb

@@ -77,6 +77,7 @@
   nixpkgs.overlays = [
     (final: prev: {
       code-cursor = final.callPackage ./pkgs/code-cursor/package.nix { };
+      oda-file-converter = final.callPackage ./pkgs/oda-file-converter/package.nix { };
     })
   ];
   
@@ -109,7 +110,6 @@
     mesa-demos
     btop
     nvtopPackages.full
-    ollama
     zsh-powerlevel10k
     slack
     discord
@@ -121,6 +121,7 @@
     # DNS/network tools
     dnsutils   # nslookup, dig
     nmap       # network scanner
+    usbutils   # lsusb, usb-devices
     
     # Build tools
     gnumake
@@ -144,12 +145,17 @@
     
     # File manager
     doublecmd     # dual-pane file manager
+
+    # Tunneling
+    ngrok         # secure tunnels to localhost
   ];
 
   environment.variables = {
     XCURSOR_THEME = "Adwaita";
     XCURSOR_SIZE = "24";
   };
+
+  nix.settings.pure-eval = false;
 
   nix.settings.experimental-features = [
     "nix-command"
@@ -216,6 +222,9 @@
   # Enable OpenGL
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;  # 32-bit support for Steam games
+
+  # 3Dconnexion SpaceMouse / SpaceNavigator (open-source spacenavd; works with many older USB models)
+  hardware.spacenavd.enable = true;
 
   # Steam
   programs.steam = {

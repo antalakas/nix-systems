@@ -3,11 +3,28 @@
   stdenv,
   dpkg,
   buildFHSEnv,
+  writeShellScript,
   qt6,
   libGL,
+  libGLU,
   fontconfig,
   freetype,
-  xorg,
+  libx11,
+  libxext,
+  libxrender,
+  libxcb,
+  xcbutilwm,
+  xcbutil,
+  xcbutilimage,
+  xcbutilkeysyms,
+  xcbutilrenderutil,
+  xcb-util-cursor,
+  libxkbcommon,
+  libpng,
+  zlib,
+  glib,
+  dbus,
+  expat,
 }:
 
 let
@@ -17,7 +34,10 @@ let
     pname = "oda-file-converter-extracted";
     inherit version;
 
-    src = ./ODAFileConverter_QT6_lnxX64_8.3dll_27.1.deb;
+    src = builtins.path {
+      path = /etc/nixos/pkgs/oda-file-converter/ODAFileConverter_QT6_lnxX64_8.3dll_27.1.deb;
+      name = "ODAFileConverter.deb";
+    };
 
     nativeBuildInputs = [ dpkg ];
 
@@ -31,22 +51,48 @@ let
       cp -r unpacked/usr/bin/ODAFileConverter_${version} "$out/app"
     '';
   };
+
+  runScript = writeShellScript "run-oda-file-converter" ''
+    export QT_QPA_PLATFORM=xcb
+    export QT_PLUGIN_PATH=/usr/lib/qt-6/plugins
+    export DISPLAY=''${DISPLAY:-:0}
+    exec "${extracted}/app/ODAFileConverter" "$@"
+  '';
 in
 buildFHSEnv {
   name = "ODAFileConverter";
 
   targetPkgs = pkgs: with pkgs; [
+    # Qt6
     qt6.qtbase
     qt6.qtwayland
+    qt6.qtsvg
+    # Graphics
     libGL
+    libGLU
+    # X11 / Wayland
+    libx11
+    libxext
+    libxrender
+    libxcb
+    xcbutilwm
+    xcbutil
+    xcbutilimage
+    xcbutilkeysyms
+    xcbutilrenderutil
+    xcb-util-cursor
+    libxkbcommon
+    # System libs
     fontconfig
     freetype
-    xorg.libX11
-    xorg.libXext
-    xorg.libXrender
+    libpng
+    zlib
+    glib
+    dbus
+    expat
   ];
 
-  runScript = "${extracted}/app/ODAFileConverter";
+  inherit runScript;
 
   meta = {
     description = "Convert between .dwg and .dxf file formats";

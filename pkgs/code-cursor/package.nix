@@ -17,7 +17,7 @@ let
   sources = {
     x86_64-linux = fetchurl {
       url = "https://api2.cursor.sh/updates/download/golden/linux-x64/cursor/3.0";
-      hash = "sha256-SdlcESipjWnLNPGf4sBxb28cpQ36uHoRzGsPC9X72Ww=";
+      hash = "sha256-dN8tFSppIpO/P0Thst5uaNzlmfWZDh0Y81Lx1BuSYt0=";
     };
   };
 

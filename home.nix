@@ -87,8 +87,12 @@ in
     mpv               # Lightweight video player
     ffmpeg            # Video/audio tools (ffmpeg, ffprobe, ffplay)
     dbeaver-bin        # SQL editor and database manager
+    jetbrains.datagrip # JetBrains SQL IDE (trial / license / student program)
     antigravity        # Google Agentic IDE (Gemini)
     zoom-us            # Zoom video conferencing
+    klavaro            # Touch typing tutor
+    oda-file-converter # Convert between .dwg and .dxf formats
+    libredwg           # Free implementation of the DWG file format
     
     # Wallpaper
     swaybg     # Wayland wallpaper tool
