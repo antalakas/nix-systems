@@ -134,6 +134,11 @@ if [ -n "$ANTHROPIC_API_KEY" ]; then
     DOCKER_ARGS+=(-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
 fi
 
+# Pass GitHub token if set (enables gh CLI and Claude GitHub access)
+if [ -n "$GH_TOKEN" ]; then
+    DOCKER_ARGS+=(-e GH_TOKEN="$GH_TOKEN")
+fi
+
 exec docker run "${DOCKER_ARGS[@]}" \
     "$IMAGE_NAME" \
     --dangerously-skip-permissions \

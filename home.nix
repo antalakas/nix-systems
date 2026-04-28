@@ -90,6 +90,7 @@ in
     jetbrains.datagrip # JetBrains SQL IDE (trial / license / student program)
     antigravity        # Google Agentic IDE (Gemini)
     zoom-us            # Zoom video conferencing
+    teams-for-linux    # Microsoft Teams (community Electron wrapper)
     klavaro            # Touch typing tutor
     oda-file-converter # Convert between .dwg and .dxf formats
     libredwg           # Free implementation of the DWG file format
@@ -155,10 +156,18 @@ in
       alias cat='bat'
       alias lg='lazygit'
       
+      # NixOS aliases
+      alias nrs='sudo nixos-rebuild switch --flake /etc/nixos --impure'
+      alias nrb='sudo nixos-rebuild boot --flake /etc/nixos --impure'
+      alias nrt='sudo nixos-rebuild test --flake /etc/nixos --impure'
+
       # Kubernetes aliases
       alias k='kubectl'
       alias kctx='kubectx'
       alias kns='kubens'
+
+      # Local secrets (not tracked by git)
+      [[ -f ~/.zshrc.secrets ]] && source ~/.zshrc.secrets
     '';
   };
 
