@@ -90,11 +90,11 @@ fi
 # Build image if it doesn't exist, or if --rebuild was requested
 DOCKERFILE="$(readlink -f ~/.config/claude-code/Dockerfile)"
 if $REBUILD; then
-    echo "Rebuilding Claude Code sandbox image..."
-    docker build --no-cache -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
+    echo "Rebuilding Claude Code sandbox image (refreshing base image too)..."
+    docker build --pull --no-cache -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
 elif ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
     echo "Building Claude Code sandbox image (first time only)..."
-    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
+    docker build --pull -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
 fi
 
 echo "🔒 Starting Claude Code in sandbox"
