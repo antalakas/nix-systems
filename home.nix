@@ -125,6 +125,7 @@ in
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
+      url."git@github.com:".insteadOf = "https://github.com/";
     };
   };
 
