@@ -120,6 +120,17 @@ DOCKER_ARGS=(
     --network=host
 )
 
+# Mount kubeconfig if present (for kubectl/helm inside the sandbox).
+# rw because cloud-provider auth plugins refresh tokens in the file.
+if [ -d "$HOME/.kube" ]; then
+    DOCKER_ARGS+=(-v "$HOME/.kube:/home/node/.kube")
+fi
+
+# Mount AWS credentials/config if present (for awscli, EKS auth, etc.)
+if [ -d "$HOME/.aws" ]; then
+    DOCKER_ARGS+=(-v "$HOME/.aws:/home/node/.aws:ro")
+fi
+
 # Load read-only reference mounts from refs.conf
 REFS_CONF="$(readlink -f ~/.config/claude-code/refs.conf 2>/dev/null || true)"
 if [ -f "$REFS_CONF" ]; then

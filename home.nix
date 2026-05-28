@@ -46,6 +46,7 @@ in
     bat        # modern cat
     fzf        # fuzzy finder
     lazygit    # git TUI
+    lazydocker # docker TUI
     gh         # GitHub CLI
     plocate    # faster locate for file searching
     glow       # terminal markdown renderer
@@ -87,8 +88,8 @@ in
     mpv               # Lightweight video player
     ffmpeg            # Video/audio tools (ffmpeg, ffprobe, ffplay)
     dbeaver-bin        # SQL editor and database manager
-    jetbrains.datagrip # JetBrains SQL IDE (trial / license / student program)
     antigravity        # Google Agentic IDE (Gemini)
+    zed-editor-fhs    # Zed code editor (FHS variant for easy extension installs)
     zoom-us            # Zoom video conferencing
     teams-for-linux    # Microsoft Teams (community Electron wrapper)
     klavaro            # Touch typing tutor
@@ -155,6 +156,7 @@ in
       alias ll='eza -la --icons'
       alias cat='bat'
       alias lg='lazygit'
+      alias ld='lazydocker'
       
       # NixOS aliases
       alias nrs='sudo nixos-rebuild switch --flake /etc/nixos --impure'

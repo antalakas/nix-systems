@@ -9,6 +9,7 @@
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./configuration-niri.nix
+      /mnt/endeavouros/home/andreas/workspace/andreas/tessera/nix/langfuse.nix
     ]
     ++ (if builtins.pathExists ./wireguard-secrets.nix 
         then [ ./wireguard-secrets.nix ] 
@@ -28,6 +29,7 @@
   networking.hostName = "nixos"; # Define your hostname.
   networking.extraHosts = ''
     172.21.255.200 app.tiledb.example.com documentation.tiledb.example.com api.tiledb.example.com jupyterhub.tiledb.example.com oauth2.tiledb.example.com
+    172.20.255.200 tile-ai.local
   '';
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
@@ -201,6 +203,9 @@
     }
   ];
   hardware.printers.ensureDefaultPrinter = "XeroxB210";
+
+  # Don't fail nixos-rebuild when the printer happens to be offline.
+  systemd.services.ensure-printers.serviceConfig.SuccessExitStatus = [ "0" "1" ];
 
   # YubiKey smartcard support
   services.pcscd.enable = true;
