@@ -44,7 +44,7 @@ RUN set -eux; \
     chmod +x /usr/local/bin/helm; \
     rm -rf /tmp/helm.tgz "/tmp/linux-${ARCH}"
 
-ARG CLAUDE_CODE_VERSION=2.1.156
+ARG CLAUDE_CODE_VERSION=2.1.160
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 RUN python3 -m venv /opt/mempalace \
