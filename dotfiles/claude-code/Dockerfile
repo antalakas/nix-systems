@@ -53,10 +53,32 @@ RUN python3 -m venv /opt/mempalace \
     && mkdir -p /home/node/.mempalace /home/node/.cache \
     && chown -R node:node /home/node/.mempalace /home/node/.cache
 
+# Cap MemPalace's background miner so its ONNX embedding pass can't saturate
+# every core (it otherwise defaults its intra-op thread pool to all CPUs and
+# pegged ~15/22 cores). MemPalace spawns the miner via $MEMPALACE_PYTHON, so we
+# point that at a wrapper that pins CPU affinity + lowers priority. The
+# long-running MCP server (interactive search) does not use this path, so it
+# stays unthrottled. Tune the cap at runtime with MEMPALACE_MINE_CPUS.
+RUN install -m 0755 /dev/stdin /usr/local/bin/mempalace-python-capped <<'EOF'
+#!/usr/bin/env bash
+# Run MemPalace's Python under a CPU cap (affinity + niceness).
+PY=/opt/mempalace/bin/python3
+CPUS="${MEMPALACE_MINE_CPUS:-6}"
+total="$(nproc)"
+[ "$CPUS" -lt 1 ] && CPUS=1
+[ "$CPUS" -gt "$total" ] && CPUS="$total"
+last="$((CPUS - 1))"
+export OMP_NUM_THREADS="$CPUS" OPENBLAS_NUM_THREADS="$CPUS" \
+       MKL_NUM_THREADS="$CPUS" NUMEXPR_NUM_THREADS="$CPUS" \
+       TOKENIZERS_PARALLELISM=false
+exec taskset -c "0-${last}" nice -n 15 "$PY" "$@"
+EOF
+
 USER node
 ENV TERM=xterm-256color COLORTERM=truecolor \
     PATH="/home/node/.local/bin:/opt/mempalace/bin:${PATH}" \
-    DISABLE_AUTOUPDATER=1
+    DISABLE_AUTOUPDATER=1 \
+    MEMPALACE_PYTHON=/usr/local/bin/mempalace-python-capped
 
 # Native installer (matches the host's installMethod=native shared via .claude.json)
 # and installs into the user-owned /home/node/.local so /doctor is happy.
