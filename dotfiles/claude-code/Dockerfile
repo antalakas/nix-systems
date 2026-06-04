@@ -45,7 +45,6 @@ RUN set -eux; \
     rm -rf /tmp/helm.tgz "/tmp/linux-${ARCH}"
 
 ARG CLAUDE_CODE_VERSION=2.1.160
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 RUN python3 -m venv /opt/mempalace \
     && /opt/mempalace/bin/pip install --no-cache-dir --upgrade pip \
@@ -55,7 +54,15 @@ RUN python3 -m venv /opt/mempalace \
     && chown -R node:node /home/node/.mempalace /home/node/.cache
 
 USER node
-ENV TERM=xterm-256color COLORTERM=truecolor PATH="/opt/mempalace/bin:${PATH}"
+ENV TERM=xterm-256color COLORTERM=truecolor \
+    PATH="/home/node/.local/bin:/opt/mempalace/bin:${PATH}" \
+    DISABLE_AUTOUPDATER=1
+
+# Native installer (matches the host's installMethod=native shared via .claude.json)
+# and installs into the user-owned /home/node/.local so /doctor is happy.
+# Version is pinned here; bump CLAUDE_CODE_VERSION and `claude-sandbox --rebuild`.
+RUN curl -fsSL https://claude.ai/install.sh | bash -s "${CLAUDE_CODE_VERSION}"
+
 WORKDIR /workspace
 
 ENTRYPOINT ["claude"]
