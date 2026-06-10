@@ -116,6 +116,7 @@
     slack
     discord
     logseq
+    rustdesk   # remote desktop client
     
     # CUDA toolkit
     cudatoolkit
@@ -306,6 +307,80 @@
         user = "greeter";
       };
     };
+  };
+
+  # Lid-close behaviour.
+  # We take full control via acpid instead of logind, because logind's
+  # "docked" rule (triggered by >1 connected display, e.g. the 25" daisy-chained
+  # off the 32" over MST) overrides the power-state rule and would keep the
+  # machine awake even on battery.
+  #
+  # Desired rule:
+  #   - on external power AND >=1 external monitor connected  -> stay on (clamshell)
+  #   - anything else (notably: on battery)                   -> suspend
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+  };
+
+  services.acpid = {
+    enable = true;
+    lidEventCommands = ''
+      # $1 is the full event line, e.g. "button/lid LID close 00000001"
+      set -- $1
+      action="$3"
+
+      # Helper: toggle the internal panel in the running niri session.
+      # acpid runs as root outside the user session, so we locate niri's IPC
+      # socket and run `niri msg` as the desktop user.
+      niri_output() {
+        runtime="/run/user/1000"
+        sock=""
+        for s in "$runtime"/niri.wayland-*.sock; do
+          [ -S "$s" ] && sock="$s"
+        done
+        [ -n "$sock" ] || return 0
+        ${pkgs.util-linux}/bin/runuser -u andreas -- \
+          env NIRI_SOCKET="$sock" ${config.programs.niri.package}/bin/niri msg output eDP-1 "$1" || true
+      }
+
+      # Lid opened: make sure the internal panel is back on.
+      if [ "$action" = "open" ]; then
+        niri_output on
+        exit 0
+      fi
+
+      [ "$action" = "close" ] || exit 0
+
+      on_ac=0
+      for f in /sys/class/power_supply/*/online; do
+        [ -r "$f" ] || continue
+        read -r v < "$f" || continue
+        [ "$v" = "1" ] && on_ac=1
+      done
+
+      ext_mon=0
+      for s in /sys/class/drm/*/status; do
+        conn=''${s#/sys/class/drm/}
+        conn=''${conn%/status}
+        # Skip the internal laptop panel(s).
+        case "$conn" in
+          *eDP*|*LVDS*|*DSI*) continue ;;
+        esac
+        read -r st < "$s" 2>/dev/null || continue
+        [ "$st" = "connected" ] && ext_mon=1
+      done
+
+      # Clamshell mode: keep running (and blank the hidden internal panel) only
+      # when on external power with an external display present.
+      if [ "$on_ac" = "1" ] && [ "$ext_mon" = "1" ]; then
+        niri_output off
+        exit 0
+      fi
+
+      ${pkgs.systemd}/bin/systemctl suspend
+    '';
   };
 
   # This value determines the NixOS release from which the default
