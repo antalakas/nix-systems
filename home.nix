@@ -61,6 +61,7 @@ in
     stern      # multi-pod log tailing
     
     # Cloud & secrets
+    awscli2    # AWS CLI (needed by kubeconfig `aws eks get-token`)
     aws-vault  # AWS credential management
     sops       # secrets encryption
     age        # modern encryption
