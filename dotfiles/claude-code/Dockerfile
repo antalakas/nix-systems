@@ -44,7 +44,7 @@ RUN set -eux; \
     chmod +x /usr/local/bin/helm; \
     rm -rf /tmp/helm.tgz "/tmp/linux-${ARCH}"
 
-ARG CLAUDE_CODE_VERSION=2.1.195
+ARG CLAUDE_CODE_VERSION=2.1.207
 
 RUN python3 -m venv /opt/mempalace \
     && /opt/mempalace/bin/pip install --no-cache-dir --upgrade pip \
