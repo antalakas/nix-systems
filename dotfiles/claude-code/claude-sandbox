@@ -254,6 +254,35 @@ if [ -d "$HOME/.aws" ]; then
     DOCKER_ARGS+=(-v "$HOME/.aws:/home/node/.aws:ro")
 fi
 
+# Mount the host's global git config, so commits made in the sandbox carry the
+# right identity instead of failing on "Author identity unknown", and so aliases
+# and defaults come along. The image ships no gitconfig of its own.
+#
+# It is regenerated rather than bind-mounted straight from ~/.gitconfig, for two
+# reasons. `git config --global --list` finds whichever file actually holds the
+# config (home-manager writes ~/.config/git/config, not ~/.gitconfig) and expands
+# any [include]. And it lets url.* rewrites be dropped: this host rewrites
+# https://github.com/ to git@github.com:, which cannot authenticate in a
+# container with no SSH keys. That rule would also defeat the SSH->HTTPS rewrite
+# below — git resolves insteadOf by longest match, and the two are the same
+# length, a tie the host's rule wins. Nothing in the environment can override it,
+# so it has to be left out of the file.
+SANDBOX_GITCONFIG="$HOME/.cache/claude-code/gitconfig"
+if git config --global --list >/dev/null 2>&1; then
+    mkdir -p "$(dirname "$SANDBOX_GITCONFIG")"
+    : > "$SANDBOX_GITCONFIG"
+    chmod 600 "$SANDBOX_GITCONFIG"
+    while IFS= read -r -d '' entry; do
+        key="${entry%%$'\n'*}"
+        val="${entry#*$'\n'}"
+        # A valueless key has no newline, so val came back as the key itself.
+        [ "$val" = "$entry" ] && val="true"
+        case "$key" in url.*) continue ;; esac
+        git config --file "$SANDBOX_GITCONFIG" --add "$key" "$val"
+    done < <(git config --global --list --null)
+    DOCKER_ARGS+=(-v "$SANDBOX_GITCONFIG:/home/node/.gitconfig:ro")
+fi
+
 # Load read-only reference mounts from refs.conf.
 #
 # Lines are mounted verbatim, so keep each one narrow. A line mounting $HOME, or
