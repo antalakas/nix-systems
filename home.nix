@@ -76,8 +76,6 @@ in
     nodejs_22
     
     # Applications
-    spotify
-    tutanota-desktop  # Tuta Mail client
     _1password-gui    # 1Password password manager
     sublime4          # Sublime Text editor
     xournalpp         # PDF annotation and signature tool
@@ -89,7 +87,6 @@ in
     mpv               # Lightweight video player
     ffmpeg            # Video/audio tools (ffmpeg, ffprobe, ffplay)
     dbeaver-bin        # SQL editor and database manager
-    antigravity        # Google Agentic IDE (Gemini)
     zed-editor-fhs    # Zed code editor (FHS variant for easy extension installs)
     zoom-us            # Zoom video conferencing
     teams-for-linux    # Microsoft Teams (community Electron wrapper)
@@ -432,31 +429,4 @@ in
       echo "Created default niri profile: home"
     fi
   '';
-  
-  # Create wrapper script for Tutanota (fixes launch from any directory)
-  home.file.".local/bin/tutanota-wrapper" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      cd "$HOME"
-      exec tutanota-desktop --no-sandbox "$@"
-    '';
-  };
-  
-  # Override Tutanota desktop entry to use wrapper (force overwrite)
-  xdg.dataFile."applications/tutanota-desktop.desktop" = {
-    force = true;  # Prevent backup collisions
-    text = ''
-      [Desktop Entry]
-      Name=Tutanota
-      GenericName=Email Client
-      Comment=Secure email client
-      Exec=/home/andreas/.local/bin/tutanota-wrapper %U
-      Icon=tutanota-desktop
-      Terminal=false
-      Type=Application
-      Categories=Network;Email;
-      MimeType=x-scheme-handler/mailto;
-    '';
-  };
 }

@@ -4,6 +4,14 @@
 
 { config, pkgs, lib, inputs, ... }:
 
+let
+  # Older nixpkgs whose builds we already have locally (or that the binary
+  # cache has), used to sidestep expensive/broken local builds on unstable.
+  pinnedPkgs = import inputs.nixpkgs-ollama {
+    system = "x86_64-linux";
+    config.allowUnfree = true;
+  };
+in
 {
   imports =
     [ # Include the results of the hardware scan.
@@ -18,6 +26,9 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # /boot is a 256M ESP; without a cap a few kernel bumps fill it and the
+  # rebuild fails partway through installing the new entry.
+  boot.loader.systemd-boot.configurationLimit = 10;
 
   # Mount old EndeavourOS partition (for extra storage, repos, ollama models)
   fileSystems."/mnt/endeavouros" = {
@@ -78,8 +89,17 @@
 
   nixpkgs.overlays = [
     (final: prev: {
-      code-cursor = final.callPackage ./pkgs/code-cursor/package.nix { };
       oda-file-converter = final.callPackage ./pkgs/oda-file-converter/package.nix { };
+      # TEMP workaround for nixpkgs#545286: since CMake 4.3.4 the CUDA backend
+      # configure step needs nvcc's root in CUDAToolkit_ROOT. Mirrors the fix
+      # in nixpkgs#545542 — drop this once that PR reaches nixos-unstable.
+      ollama-cuda = prev.ollama-cuda.overrideAttrs (old: {
+        preConfigure = (old.preConfigure or "") + ''
+          if nvccExe="$(type -P nvcc)"; then
+            export CUDAToolkit_ROOT="''${CUDAToolkit_ROOT:+''${CUDAToolkit_ROOT};}''${nvccExe%/bin/nvcc}"
+          fi
+        '';
+      });
     })
   ];
   
@@ -87,8 +107,13 @@
   nixpkgs.config.permittedInsecurePackages = [
     "openssl-1.1.1w"         # Required by Sublime Text 4
   ];
+
+  # Upstream marks sublimetext4 broken solely because its plug-in host needs
+  # the insecure OpenSSL permitted above, so the guard is redundant here.
+  nixpkgs.config.problems.handlers.sublimetext4.broken = "warn";
   
-  # Enable user namespaces (required for Electron apps like Tutanota)
+  # Enable user namespaces (required for Flatpak's bubblewrap sandbox and
+  # nix-store Electron apps like 1Password)
   security.unprivilegedUsernsClone = true;
 
   # List packages installed in system profile. To search, run:
@@ -103,7 +128,6 @@
     fuzzel
     firefox
     waybar
-    code-cursor
     brave
     xwayland-satellite
     psmisc
@@ -113,11 +137,7 @@
     btop
     nvtopPackages.full
     zsh-powerlevel10k
-    slack
-    discord
-    logseq
-    rustdesk   # remote desktop client
-    
+
     # CUDA toolkit
     cudatoolkit
     
@@ -164,6 +184,15 @@
     "nix-command"
     "flakes"
   ];
+
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
+
+  # Hardlink identical store paths; the root filesystem runs close to full.
+  nix.optimise.automatic = true;
 
   # Enable nix-ld for running dynamically linked binaries (pixi, conda, etc.)
   programs.nix-ld.enable = true;
@@ -227,18 +256,8 @@
 
   # Enable OpenGL
   hardware.graphics.enable = true;
-  hardware.graphics.enable32Bit = true;  # 32-bit support for Steam games
-
   # 3Dconnexion SpaceMouse / SpaceNavigator (open-source spacenavd; works with many older USB models)
   hardware.spacenavd.enable = true;
-
-  # Steam
-  programs.steam = {
-    enable = true;
-    remotePlay.openFirewall = true;  # Steam Remote Play
-    dedicatedServer.openFirewall = true;  # Source dedicated servers
-    gamescopeSession.enable = true;  # GameScope compositor for better gaming
-  };
 
   # NVIDIA drivers
   services.xserver.videoDrivers = [ "nvidia" ];
@@ -395,6 +414,19 @@
 
   services.dbus.enable = true;
 
+  # Flatpak for apps kept outside the nix store — Electron apps whose nixpkgs
+  # packages pin EOL Electrons or lag upstream. Managed declaratively via
+  # nix-flatpak (installed on activation; flathub is its default remote).
+  services.flatpak = {
+    enable = true;
+    packages = [
+      "com.logseq.Logseq"
+      "com.slack.Slack"
+      "com.spotify.Client"
+      "com.tutanota.Tutanota"
+    ];
+  };
+
   xdg.portal = {
     enable = true;
     wlr.enable = true;
@@ -412,9 +444,16 @@
     nerd-fonts.iosevka
   ];
 
-  # Ollama for local LLMs with NVIDIA GPU
+  # Ollama for local LLMs with NVIDIA GPU. Taken from the pinned
+  # nixpkgs-ollama input so it reuses the already-built store path instead of
+  # recompiling the (uncached, unfree) CUDA build on every nixpkgs bump.
   services.ollama = {
     enable = true;
-    package = pkgs.ollama-cuda;
+    package = pinnedPkgs.ollama-cuda;
+    # Static user instead of DynamicUser so the models can live outside
+    # /var/lib — the root filesystem is too small to hold them.
+    user = "ollama";
+    group = "ollama";
+    modelsDir = "/mnt/endeavouros/ollama/models";
   };
 }
