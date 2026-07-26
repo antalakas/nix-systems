@@ -23,6 +23,10 @@
 # which the repo you opened controls. Pass --owner when opening a repo whose git
 # config you have not vetted. See the token selection section below.
 #
+# When a token is selected, GitHub SSH remotes are rewritten to HTTPS inside the
+# container and authenticated with it, so plain git fetch/push work despite the
+# sandbox having no SSH keys.
+#
 # Profiles live in ~/.claude-profiles/<name>/ with .claude/ and .claude.json
 # Mempalace data is kept in per-profile Docker volumes:
 #   claude-code-sandbox-<profile>-mempalace -> /home/node/.mempalace
@@ -279,6 +283,27 @@ if [ -n "$SANDBOX_GH_TOKEN" ]; then
     export GH_OWNER
     DOCKER_ARGS+=(-e GH_TOKEN)
     DOCKER_ARGS+=(-e GH_OWNER)
+
+    # Make plain git work against GitHub. The sandbox mounts no SSH keys, so an
+    # `origin` of git@github.com:... cannot authenticate; rewrite those remotes
+    # to HTTPS and answer the credential prompt from $GH_TOKEN.
+    #
+    # The helper is a shell snippet git runs per request, so $GH_TOKEN expands
+    # at that moment: the token stays out of .git/config, out of remote URLs,
+    # and out of anything git echoes back on failure. Set only when a token
+    # exists — without one, leaving SSH alone gives an honest "Permission
+    # denied (publickey)" instead of an HTTPS 403. GIT_TERMINAL_PROMPT=0 makes
+    # a missing or expired token fail rather than block on a password prompt.
+    DOCKER_ARGS+=(
+        -e GIT_CONFIG_COUNT=3
+        -e GIT_CONFIG_KEY_0='url.https://github.com/.insteadOf'
+        -e GIT_CONFIG_VALUE_0='git@github.com:'
+        -e GIT_CONFIG_KEY_1='url.https://github.com/.insteadOf'
+        -e GIT_CONFIG_VALUE_1='ssh://git@github.com/'
+        -e GIT_CONFIG_KEY_2='credential.https://github.com.helper'
+        -e GIT_CONFIG_VALUE_2='!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f'
+        -e GIT_TERMINAL_PROMPT=0
+    )
 fi
 
 exec docker run "${DOCKER_ARGS[@]}" \
