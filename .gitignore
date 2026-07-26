@@ -11,5 +11,8 @@ wireguard-secrets.nix
 # Private sandbox reference mounts (machine-specific)
 dotfiles/claude-code/refs.conf
 
+# GitHub tokens for the sandbox (real file lives in ~/.config/claude-code/)
+dotfiles/claude-code/github-tokens
+
 # Large binary blobs (not suitable for git)
 pkgs/oda-file-converter/*.deb

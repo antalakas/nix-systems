@@ -1,0 +1,27 @@
+# GitHub tokens for the Claude Code sandbox, one per resource owner.
+#
+# Install to ~/.config/claude-code/github-tokens with mode 0600:
+#   install -m 600 github-tokens.example ~/.config/claude-code/github-tokens
+#
+# Do NOT manage this file through home.nix / home.file — anything nix-manages is
+# copied into /nix/store, which is world-readable. Keep it a plain host file.
+#
+# Format: <owner>=<token>. Owner match is case-insensitive. `#` starts a comment.
+# claude-sandbox reads the owner from the workspace's `origin` remote and injects
+# only that owner's token, so a sandbox on a TileDB-Inc repo never sees the
+# antalakas or TheCloudOpsCompany token.
+#
+# Fine-grained PATs (github_pat_...) are scoped to a single resource owner, which
+# is why this file exists — one token cannot cover all three. Mint each at
+# https://github.com/settings/personal-access-tokens/new by setting "Resource
+# owner" to the owner below. Org-owned tokens may need an org admin to approve
+# them before they start working.
+
+antalakas=github_pat_REPLACE_ME
+TileDB-Inc=github_pat_REPLACE_ME
+TheCloudOpsCompany=github_pat_REPLACE_ME
+
+# Optional: used when the workspace has no GitHub origin remote, or its owner has
+# no entry above. Leave it unset to get no token at all in that case, which is the
+# safer default — an unmatched workspace then simply has no GitHub access.
+# default=github_pat_REPLACE_ME

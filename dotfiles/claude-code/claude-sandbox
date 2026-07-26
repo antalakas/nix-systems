@@ -1,14 +1,27 @@
 #!/usr/bin/env bash
 # Run Claude Code in a sandboxed Docker container
-# Usage: claude-sandbox [--profile NAME] [--rebuild] [project-dir] [-- claude-args...]
+# Usage: claude-sandbox [--profile NAME] [--owner NAME] [--rebuild] [project-dir] [-- claude-args...]
 #
 # Examples:
 #   claude-sandbox                              # current dir, default (work) profile
 #   claude-sandbox --rebuild                    # rebuild image to get latest version
 #   claude-sandbox --profile personal           # current dir, personal profile
 #   claude-sandbox --profile personal ~/proj    # specific project, personal profile
+#   claude-sandbox --owner TileDB-Inc           # force a GitHub owner's token
 #   claude-sandbox . -- --continue              # pass args to claude
 #   claude-sandbox . -- "Fix the login bug"     # pass a prompt
+#
+# GitHub tokens are selected per-workspace. Fine-grained PATs are scoped to a
+# single resource owner, so one token cannot span owners; keep one per owner in
+# ~/.config/claude-code/github-tokens (mode 0600, never in the nix store):
+#   antalakas=github_pat_...
+#   TileDB-Inc=github_pat_...
+# The owner is read from the project's `origin` remote, so only that owner's
+# token is injected. Override with --owner, or set a `default=` entry.
+#
+# Mind the trust boundary: that remote comes from the workspace's own .git/config,
+# which the repo you opened controls. Pass --owner when opening a repo whose git
+# config you have not vetted. See the token selection section below.
 #
 # Profiles live in ~/.claude-profiles/<name>/ with .claude/ and .claude.json
 # Mempalace data is kept in per-profile Docker volumes:
@@ -23,12 +36,17 @@ set -e
 IMAGE_NAME="claude-code-sandbox"
 PROFILE="work"
 REBUILD=false
+OWNER_OVERRIDE=""
 
 # Parse flags
 while [ $# -gt 0 ]; do
     case "$1" in
         --profile)
             PROFILE="$2"
+            shift 2
+            ;;
+        --owner)
+            OWNER_OVERRIDE="$2"
             shift 2
             ;;
         --rebuild)
@@ -97,9 +115,110 @@ elif ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
     docker build --pull -t "$IMAGE_NAME" -f "$DOCKERFILE" "$(dirname "$DOCKERFILE")"
 fi
 
+# --- GitHub token selection -------------------------------------------------
+# Fine-grained PATs are scoped to one resource owner, so we keep one token per
+# owner and inject only the one matching this workspace. That keeps each owner's
+# token out of sandboxes opened on your other owners' repos.
+#
+# This is cross-contamination control between repos you trust, not a security
+# boundary. The owner is derived from the workspace's `origin` remote, i.e. from
+# data the repo itself supplies, so a repo that points origin at another owner
+# attracts that owner's token. `git remote get-url` also applies any
+# url.*.insteadOf rewrites from the same config. Use --owner to decide the owner
+# yourself when the workspace is not one you control.
+TOKENS_CONF="$HOME/.config/claude-code/github-tokens"
+
+# Derive the GitHub owner from the project's origin remote.
+detect_github_owner() {
+    local dir="$1" url path
+    url="$(git -C "$dir" remote get-url origin 2>/dev/null || true)"
+    [ -n "$url" ] || return 0
+    case "$url" in
+        git@github.com:*)       path="${url#git@github.com:}" ;;
+        ssh://git@github.com/*) path="${url#ssh://git@github.com/}" ;;
+        https://github.com/*)   path="${url#https://github.com/}" ;;
+        http://github.com/*)    path="${url#http://github.com/}" ;;
+        *) return 0 ;;
+    esac
+    printf '%s' "${path%%/*}"
+}
+
+# Look up an owner's token. Owner match is case-insensitive, as GitHub is.
+lookup_token() {
+    local want="${1,,}" line key val
+    [ -f "$TOKENS_CONF" ] || return 0
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%$'\r'}"
+        [[ -z "${line//[[:space:]]/}" || "$line" == \#* ]] && continue
+        [[ "$line" == *=* ]] || continue
+        key="${line%%=*}"
+        val="${line#*=}"
+        key="${key//[[:space:]]/}"
+        val="${val#"${val%%[![:space:]]*}"}"
+        val="${val%"${val##*[![:space:]]}"}"
+        if [ "${key,,}" = "$want" ]; then
+            printf '%s' "$val"
+            return 0
+        fi
+    done < "$TOKENS_CONF"
+}
+
+if [ -n "$OWNER_OVERRIDE" ]; then
+    GH_OWNER="$OWNER_OVERRIDE"
+else
+    GH_OWNER="$(detect_github_owner "$PROJECT_DIR")"
+fi
+
+SANDBOX_GH_TOKEN=""
+TOKEN_SOURCE=""
+if [ -f "$TOKENS_CONF" ]; then
+    # Credentials readable beyond their owner leak to every local user. Refuse
+    # rather than warn: a warning would scroll past under the session banner.
+    PERMS="$(stat -c '%a' "$TOKENS_CONF" 2>/dev/null || echo '')"
+    case "$PERMS" in
+        # Owner-only modes: group and other bits must be 0. stat drops leading
+        # zeros, so mode 000 reports as a bare "0".
+        *00|0) ;;
+        '')
+            echo "❌ Cannot stat $TOKENS_CONF to check its permissions." >&2
+            echo "   Refusing to read tokens from a file of unknown mode." >&2
+            exit 1
+            ;;
+        *)
+            echo "❌ $TOKENS_CONF is mode $PERMS, readable beyond its owner." >&2
+            echo "   Run: chmod 600 $TOKENS_CONF" >&2
+            exit 1
+            ;;
+    esac
+
+    if [ -n "$GH_OWNER" ]; then
+        SANDBOX_GH_TOKEN="$(lookup_token "$GH_OWNER" || true)"
+        [ -n "$SANDBOX_GH_TOKEN" ] && TOKEN_SOURCE="$GH_OWNER"
+    fi
+    if [ -z "$SANDBOX_GH_TOKEN" ]; then
+        SANDBOX_GH_TOKEN="$(lookup_token default || true)"
+        [ -n "$SANDBOX_GH_TOKEN" ] && TOKEN_SOURCE="default"
+    fi
+else
+    # No per-owner config: fall back to the ambient token (legacy behaviour).
+    SANDBOX_GH_TOKEN="$GH_TOKEN"
+    [ -n "$SANDBOX_GH_TOKEN" ] && TOKEN_SOURCE="\$GH_TOKEN (no $TOKENS_CONF)"
+fi
+
+if [ -n "$SANDBOX_GH_TOKEN" ]; then
+    GH_TOKEN_STATUS="$TOKEN_SOURCE"
+elif [ ! -f "$TOKENS_CONF" ]; then
+    GH_TOKEN_STATUS="none (create $TOKENS_CONF)"
+elif [ -n "$GH_OWNER" ]; then
+    GH_TOKEN_STATUS="none (no entry for '$GH_OWNER' in $TOKENS_CONF)"
+else
+    GH_TOKEN_STATUS="none (no GitHub origin remote; use --owner)"
+fi
+
 echo "🔒 Starting Claude Code in sandbox"
 echo "   Profile: $PROFILE"
 echo "   Project: $PROJECT_DIR"
+echo "   GitHub:  owner=${GH_OWNER:-<unknown>} token=$GH_TOKEN_STATUS"
 echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
 echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
 echo ""
@@ -131,7 +250,11 @@ if [ -d "$HOME/.aws" ]; then
     DOCKER_ARGS+=(-v "$HOME/.aws:/home/node/.aws:ro")
 fi
 
-# Load read-only reference mounts from refs.conf
+# Load read-only reference mounts from refs.conf.
+#
+# Lines are mounted verbatim, so keep each one narrow. A line mounting $HOME, or
+# ~/.config/claude-code itself, would hand the container the whole github-tokens
+# file and silently undo the per-owner token selection above.
 REFS_CONF="$(readlink -f ~/.config/claude-code/refs.conf 2>/dev/null || true)"
 if [ -f "$REFS_CONF" ]; then
     while IFS= read -r line; do
@@ -145,9 +268,17 @@ if [ -n "$ANTHROPIC_API_KEY" ]; then
     DOCKER_ARGS+=(-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
 fi
 
-# Pass GitHub token if set (enables gh CLI and Claude GitHub access)
-if [ -n "$GH_TOKEN" ]; then
-    DOCKER_ARGS+=(-e GH_TOKEN="$GH_TOKEN")
+# Pass the workspace's GitHub token (enables gh CLI and Claude GitHub access).
+# Resolved above; only this owner's token enters the container.
+#
+# Export and pass `-e GH_TOKEN` by name, never `-e GH_TOKEN=<value>`: the value
+# form puts the token in the docker process's argv, where any local user can
+# read it from /proc/<pid>/cmdline for as long as the container runs.
+if [ -n "$SANDBOX_GH_TOKEN" ]; then
+    export GH_TOKEN="$SANDBOX_GH_TOKEN"
+    export GH_OWNER
+    DOCKER_ARGS+=(-e GH_TOKEN)
+    DOCKER_ARGS+=(-e GH_OWNER)
 fi
 
 exec docker run "${DOCKER_ARGS[@]}" \
