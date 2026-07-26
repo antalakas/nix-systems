@@ -16,8 +16,8 @@ let
 
   sources = {
     x86_64-linux = fetchurl {
-      url = "https://api2.cursor.sh/updates/download/golden/linux-x64/cursor/3.0";
-      hash = "sha256-dN8tFSppIpO/P0Thst5uaNzlmfWZDh0Y81Lx1BuSYt0=";
+      url = "https://downloads.cursor.com/production/4f02290ccd9304f0e6bf8ee85f6e9106f02ac1f7/linux/x64/Cursor-3.13.10-x86_64.AppImage";
+      hash = "sha256-pZq2rQnIbFLejOkK2y0GZEVRmuNKZvI+oxaviK/vpXQ=";
     };
   };
 
@@ -27,8 +27,8 @@ let
 in
 buildVscode rec {
   inherit useVSCodeRipgrep;
-  version = "3.0";
-  vscodeVersion = "1.105.1";
+  version = "3.13.10";
+  vscodeVersion = "1.128.0";
   commandLineArgs = finalCommandLineArgs;
 
   pname = "cursor";
