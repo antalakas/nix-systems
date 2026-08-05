@@ -19,62 +19,19 @@ let
   };
 in
 {
-  imports = [ ./neovim.nix ];
-  # Home Manager needs this
-  home.username = "andreas";
-  home.homeDirectory = "/home/andreas";
-  
+  # The CLI toolchain, git, zsh, tmux, direnv, neovim and the Claude Code
+  # sandbox come from home/common.nix. What is left here is the desktop.
+  imports = [ ../../home/common.nix ];
+
   # This should match your NixOS version
   home.stateVersion = "24.11";
-
-  # Let Home Manager manage itself
-  programs.home-manager.enable = true;
-  
-  # Ensure ~/.local/bin is in PATH (for wrapper scripts)
-  home.sessionVariables = {
-    PATH = "$HOME/.local/bin:$PATH";
-  };
 
   # ─────────────────────────────────────────────────────────────
   # User Packages (installed for this user only)
   # ─────────────────────────────────────────────────────────────
   home.packages = with pkgs; [
-    # CLI essentials
-    ripgrep
-    fd
-    eza        # modern ls
-    bat        # modern cat
-    fzf        # fuzzy finder
-    lazygit    # git TUI
-    lazydocker # docker TUI
-    gh         # GitHub CLI
-    plocate    # faster locate for file searching
-    glow       # terminal markdown renderer
-    zip        # create zip archives
-    unzip      # extract zip archives
     sox        # audio processing CLI
-    
-    # Kubernetes utilities (global, version-agnostic)
-    kubectl    # k8s CLI
-    kubectx    # includes kubens
-    k9s        # TUI for k8s
-    stern      # multi-pod log tailing
-    
-    # Cloud & secrets
-    awscli2    # AWS CLI (needed by kubeconfig `aws eks get-token`)
-    aws-vault  # AWS credential management
-    sops       # secrets encryption
-    age        # modern encryption
-    
-    # Data wrangling
-    yq-go      # jq for YAML
-    
-    # Python dev
-    pixi       # modern Python/conda environment manager
-    
-    # Node.js (npm, npx)
-    nodejs_22
-    
+
     # Applications
     _1password-gui    # 1Password password manager
     sublime4          # Sublime Text editor
@@ -104,73 +61,16 @@ in
   ];
 
   # ─────────────────────────────────────────────────────────────
-  # Direnv (auto-load dev environments)
+  # Zsh — the shared parts (history, oh-my-zsh, aliases) are in
+  # home/common.nix; only the rebuild aliases are host-specific.
   # ─────────────────────────────────────────────────────────────
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;  # faster cached nix shells
-  };
-
-  # ─────────────────────────────────────────────────────────────
-  # Git
-  # ─────────────────────────────────────────────────────────────
-  programs.git = {
-    enable = true;
-    signing.format = "openpgp";
-    settings = {
-      user.name = "antalakas";
-      user.email = "antalakas@gmail.com";
-      init.defaultBranch = "main";
-      pull.rebase = true;
-      push.autoSetupRemote = true;
-      url."git@github.com:".insteadOf = "https://github.com/";
-    };
-  };
-
-  # ─────────────────────────────────────────────────────────────
-  # Zsh
-  # ─────────────────────────────────────────────────────────────
-  programs.zsh = {
-    enable = true;
-    history = {
-      size = 10000;
-      save = 10000;
-      path = "${config.home.homeDirectory}/.zsh_history";
-      ignoreDups = true;
-      share = true;
-    };
-    
-    oh-my-zsh = {
-      enable = true;
-      plugins = [ "git" "sudo" "history" "fzf" "kubectl" "aws" ];
-    };
-    
-    initContent = ''
-      # Powerlevel10k
-      source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
-      [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-      
-      # Aliases
-      alias ls='eza --icons'
-      alias ll='eza -la --icons'
-      alias cat='bat'
-      alias lg='lazygit'
-      alias ld='lazydocker'
-      
-      # NixOS aliases
-      alias nrs='sudo nixos-rebuild switch --flake /etc/nixos --impure'
-      alias nrb='sudo nixos-rebuild boot --flake /etc/nixos --impure'
-      alias nrt='sudo nixos-rebuild test --flake /etc/nixos --impure'
-
-      # Kubernetes aliases
-      alias k='kubectl'
-      alias kctx='kubectx'
-      alias kns='kubens'
-
-      # Local secrets (not tracked by git)
-      [[ -f ~/.zshrc.secrets ]] && source ~/.zshrc.secrets
-    '';
-  };
+  programs.zsh.initContent = ''
+    # NixOS aliases. --impure because this host imports langfuse.nix from
+    # outside the repo (see hosts/nixos/default.nix).
+    alias nrs='sudo nixos-rebuild switch --flake /etc/nixos --impure'
+    alias nrb='sudo nixos-rebuild boot --flake /etc/nixos --impure'
+    alias nrt='sudo nixos-rebuild test --flake /etc/nixos --impure'
+  '';
 
   # ─────────────────────────────────────────────────────────────
   # XDG Config Files
@@ -178,12 +78,6 @@ in
   xdg.configFile = {
     # Force overwrite Alacritty config (prevent backup collisions)
     "alacritty/alacritty.toml".force = true;
-    
-    # aws-vault configuration
-    "aws-vault/config".text = ''
-      # Default session duration
-      duration=8h
-    '';
   };
 
   # ─────────────────────────────────────────────────────────────
@@ -416,38 +310,33 @@ in
   # ─────────────────────────────────────────────────────────────
   # Dotfiles (files that Home Manager doesn't have modules for)
   # ─────────────────────────────────────────────────────────────
+  # The Claude Code sandbox entries moved to home/common.nix — it needs only
+  # Docker, so it is identical on every host.
   home.file = {
     # Powerlevel10k config (if you have one)
-    # ".p10k.zsh".source = ./dotfiles/p10k.zsh;
-    
+    # ".p10k.zsh".source = ../../dotfiles/p10k.zsh;
+
     # Niri profiles (both available, switch with niri-profile command)
-    ".config/niri/config-home.kdl".source = ./dotfiles/niri/config-home.kdl;
-    ".config/niri/config-office.kdl".source = ./dotfiles/niri/config-office.kdl;
-    
+    ".config/niri/config-home.kdl".source = ../../dotfiles/niri/config-home.kdl;
+    ".config/niri/config-office.kdl".source = ../../dotfiles/niri/config-office.kdl;
+
     # Niri profile switcher
     ".local/bin/niri-profile" = {
-      source = ./dotfiles/niri/switch-profile.sh;
+      source = ../../dotfiles/niri/switch-profile.sh;
       executable = true;
     };
-    
+
     # Pragmasevka font
-    ".local/share/fonts/Pragmasevka".source = ./fonts/Pragmasevka;
-    
+    ".local/share/fonts/Pragmasevka".source = ../../fonts/Pragmasevka;
+
     # Wallpaper
-    ".config/wallpapers/microgpt.png".source = ./dotfiles/wallpapers/microgpt.png;
-    
-    # Claude Code sandbox
-    ".config/claude-code/Dockerfile".source = ./dotfiles/claude-code/Dockerfile;
-    ".local/bin/claude-sandbox" = {
-      source = ./dotfiles/claude-code/claude-sandbox;
-      executable = true;
-    };
-    
+    ".config/wallpapers/microgpt.png".source = ../../dotfiles/wallpapers/microgpt.png;
+
     # Waybar config
-    ".config/waybar/config.json".source = ./dotfiles/waybar/config.json;
-    ".config/waybar/style.css".source = ./dotfiles/waybar/style.css;
+    ".config/waybar/config.json".source = ../../dotfiles/waybar/config.json;
+    ".config/waybar/style.css".source = ../../dotfiles/waybar/style.css;
     ".config/waybar/niri-workspaces.sh" = {
-      source = ./dotfiles/waybar/niri-workspaces.sh;
+      source = ../../dotfiles/waybar/niri-workspaces.sh;
       executable = true;
     };
   };

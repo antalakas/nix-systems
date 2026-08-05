@@ -16,11 +16,12 @@ in
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      ./configuration-niri.nix
+      ./niri.nix
+      ../../modules/common.nix
       /mnt/endeavouros/home/andreas/workspace/andreas/tessera/nix/langfuse.nix
     ]
-    ++ (if builtins.pathExists ./wireguard-secrets.nix 
-        then [ ./wireguard-secrets.nix ] 
+    ++ (if builtins.pathExists ../../wireguard-secrets.nix
+        then [ ../../wireguard-secrets.nix ]
         else [ ]);
 
   # Bootloader.
@@ -51,23 +52,8 @@ in
   # Enable networking
   networking.networkmanager.enable = true;
 
-  # Set your time zone.
-  time.timeZone = "Europe/Athens";
-
-  # Select internationalisation properties.
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "el_GR.UTF-8";
-    LC_IDENTIFICATION = "el_GR.UTF-8";
-    LC_MEASUREMENT = "el_GR.UTF-8";
-    LC_MONETARY = "el_GR.UTF-8";
-    LC_NAME = "el_GR.UTF-8";
-    LC_NUMERIC = "el_GR.UTF-8";
-    LC_PAPER = "el_GR.UTF-8";
-    LC_TELEPHONE = "el_GR.UTF-8";
-    LC_TIME = "el_GR.UTF-8";
-  };
+  # Time zone, locales, the andreas user, zsh, docker, tailscale, nix settings
+  # and the base CLI packages all live in modules/common.nix.
 
   # Configure keymap in X11
   services.xserver.xkb = {
@@ -75,21 +61,9 @@ in
     variant = "";
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.andreas = {
-    shell = pkgs.zsh;
-    isNormalUser = true;
-    description = "andreas";
-    extraGroups = [ "networkmanager" "wheel" "docker" ];
-    packages = with pkgs; [];
-  };
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
-
   nixpkgs.overlays = [
     (final: prev: {
-      oda-file-converter = final.callPackage ./pkgs/oda-file-converter/package.nix { };
+      oda-file-converter = final.callPackage ../../pkgs/oda-file-converter/package.nix { };
       # TEMP workaround for nixpkgs#545286: since CMake 4.3.4 the CUDA backend
       # configure step needs nvcc's root in CUDAToolkit_ROOT. Mirrors the fix
       # in nixpkgs#545542 — drop this once that PR reaches nixos-unstable.
@@ -118,38 +92,26 @@ in
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
+  # wget/curl/git/jq/btop/psmisc/dnsutils/nmap/gnumake/gcc/powerlevel10k come
+  # from modules/common.nix; this list is what only a desktop needs.
   environment.systemPackages = with pkgs; [
     # neovim is provided by nixvim via home-manager (see neovim.nix)
-    wget
-    curl
-    git
-    jq
     alacritty
     fuzzel
     firefox
     waybar
     brave
     xwayland-satellite
-    psmisc
     networkmanagerapplet
     adwaita-icon-theme
     mesa-demos
-    btop
     nvtopPackages.full
-    zsh-powerlevel10k
 
     # CUDA toolkit
     cudatoolkit
-    
-    # DNS/network tools
-    dnsutils   # nslookup, dig
-    nmap       # network scanner
+
     usbutils   # lsusb, usb-devices
-    
-    # Build tools
-    gnumake
-    gcc
-    
+
     # Screenshot tools (Flameshot alternative for Wayland)
     grim          # screenshot capture
     slurp         # region selection
@@ -178,40 +140,24 @@ in
     XCURSOR_SIZE = "24";
   };
 
+  # Required by the out-of-tree langfuse.nix import above; this host is the
+  # reason every rebuild here needs --impure.
   nix.settings.pure-eval = false;
-
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
-
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 30d";
-  };
-
-  # Hardlink identical store paths; the root filesystem runs close to full.
-  nix.optimise.automatic = true;
-
-  # Enable nix-ld for running dynamically linked binaries (pixi, conda, etc.)
-  programs.nix-ld.enable = true;
 
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
   services.blueman.enable = true;
 
-  # Docker (data root on EndeavourOS partition for images/containers)
-  virtualisation.docker = {
-    enable = true;
-    enableOnBoot = true;
-    daemon.settings = {
-      data-root = "/mnt/endeavouros/var/lib/docker";
-    };
+  # Docker itself comes from modules/common.nix; only the data root, which
+  # lives on the EndeavourOS partition, is specific to this machine.
+  virtualisation.docker.daemon.settings = {
+    data-root = "/mnt/endeavouros/var/lib/docker";
   };
 
-  # Tailscale VPN
-  services.tailscale.enable = true;
+  # Tailscale is enabled in modules/common.nix. Relaxing the reverse-path check
+  # is done here rather than there because this host does not set
+  # `useRoutingFeatures` — which is what makes the tailscale module set "loose"
+  # on its own — and because the WireGuard profile wants it off entirely.
   networking.firewall.checkReversePath = false;
 
   # Reach the ollama API (services.ollama, host = "0.0.0.0") from other tailnet
@@ -281,27 +227,7 @@ in
     };
   };
 
-  # Enable zsh system-wide
-  programs.zsh = {
-    enable = true;
-    histSize = 10000;
-    histFile = "$HOME/.zsh_history";
-    setOptions = [
-      "SHARE_HISTORY"
-      "HIST_IGNORE_DUPS"
-      "HIST_IGNORE_SPACE"
-      "HIST_EXPIRE_DUPS_FIRST"
-      "HIST_FIND_NO_DUPS"
-    ];
-    promptInit = ''
-      source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
-    '';
-    ohMyZsh = {
-      enable = true;
-      theme = "robbyrussell";  # or "agnoster", "powerlevel10k", etc.
-      plugins = [ "git" "sudo" "docker" "history" ];
-    };
-  };
+  # zsh is configured system-wide in modules/common.nix.
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.

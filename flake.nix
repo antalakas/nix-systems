@@ -18,6 +18,20 @@
     # ?ref=latest tracks the latest stable tag per the nix-flatpak README.
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
 
+    # Declarative disk partitioning, used to install `forge` from
+    # hosts/forge/disko.nix rather than by hand at the shell.
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Secrets committed to this repo encrypted, decrypted at activation with a
+    # key derived from the host's SSH host key. See .sops.yaml.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Pinned to the last rev whose ollama-cuda we already built locally —
     # ollama-cuda is unfree (never binary-cached), so tracking unstable means
     # a long local CUDA compile on every bump. See services.ollama in
@@ -29,7 +43,7 @@
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
-        ./configuration.nix
+        ./hosts/nixos
         nix-flatpak.nixosModules.nix-flatpak
 
         # Home Manager as NixOS module
@@ -41,11 +55,37 @@
           home-manager.users.andreas = {
             imports = [
               nixvim.homeModules.nixvim
-              ./home.nix
+              ./hosts/nixos/home.nix
             ];
             # Nixvim evaluates its own nixpkgs instance; we deliberately point
             # it at the system nixpkgs (matching the `follows` in inputs),
             # which also silences nixvim's pin-mismatch warning.
+            programs.nixvim.nixpkgs.source = nixpkgs;
+          };
+        }
+      ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # forge — headless dev box. Unlike `nixos` above, this one evaluates purely:
+    # it has no out-of-tree imports, so it needs no `--impure`.
+    nixosConfigurations.forge = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./hosts/forge
+        inputs.disko.nixosModules.disko
+        inputs.sops-nix.nixosModules.sops
+
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "hm-backup";
+          home-manager.users.andreas = {
+            imports = [
+              nixvim.homeModules.nixvim
+              ./hosts/forge/home.nix
+            ];
             programs.nixvim.nixpkgs.source = nixpkgs;
           };
         }

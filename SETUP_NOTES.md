@@ -22,14 +22,23 @@ This documents the complete setup process for this NixOS system.
 
 ## Key Configuration Files
 
+This flake builds two hosts: `nixos` (this laptop) and `forge` (a headless dev
+box — see `docs/forge-install.md`). Anything both hosts need lives in
+`modules/` or `home/`; anything one host needs lives under `hosts/<name>/`.
+
 | File | Purpose |
 |------|---------|
-| `flake.nix` | Flake entry point, Home Manager integration |
-| `configuration.nix` | Main system config |
-| `configuration-niri.nix` | Niri/Wayland specific settings |
-| `hardware-configuration.nix` | Hardware-specific (auto-generated) |
-| `home.nix` | Home Manager user config (dotfiles, user packages) |
-| `wireguard-secrets.nix` | WireGuard VPN config (gitignored) |
+| `flake.nix` | Flake entry point, Home Manager integration, both hosts |
+| `modules/common.nix` | System config shared by every host |
+| `modules/server.nix` | Headless profile (sshd, Tailscale SSH, kind sysctls) |
+| `modules/k8s-dev.nix` | kind, local registry, k3s (off by default) |
+| `home/common.nix` | User config shared by every host (CLI, git, zsh, tmux) |
+| `hosts/nixos/default.nix` | This laptop's system config |
+| `hosts/nixos/niri.nix` | Niri/Wayland specific settings |
+| `hosts/nixos/hardware-configuration.nix` | Hardware-specific (auto-generated) |
+| `hosts/nixos/home.nix` | This laptop's desktop user config |
+| `hosts/forge/` | The headless box: config, disko layout, sops wiring |
+| `wireguard-secrets.nix` | WireGuard VPN config (tracked, skip-worktree) |
 | `dotfiles/` | Actual dotfile contents managed by Home Manager |
 | `templates/` | Flake templates for new projects |
 

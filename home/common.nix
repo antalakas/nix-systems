@@ -1,0 +1,151 @@
+# User configuration shared by every host: the CLI toolchain, git identity,
+# shell, and the Claude Code sandbox. Nothing here may depend on a graphical
+# session — desktop apps and Wayland config belong in home/desktop.nix.
+#
+# `home.stateVersion` is deliberately absent: it records when a host was first
+# installed, so each host sets its own.
+
+{ config, pkgs, lib, ... }:
+
+{
+  imports = [ ../neovim.nix ];
+
+  home.username = "andreas";
+  home.homeDirectory = "/home/andreas";
+
+  programs.home-manager.enable = true;
+
+  # Wrapper scripts (claude-sandbox and friends) live here.
+  home.sessionVariables = {
+    PATH = "$HOME/.local/bin:$PATH";
+  };
+
+  home.packages = with pkgs; [
+    # CLI essentials
+    ripgrep
+    fd
+    eza # modern ls
+    bat # modern cat
+    fzf # fuzzy finder
+    lazygit # git TUI
+    lazydocker # docker TUI
+    gh # GitHub CLI
+    plocate
+    glow # terminal markdown renderer
+    zip
+    unzip
+
+    # Kubernetes utilities (global, version-agnostic)
+    kubectl
+    kubectx # includes kubens
+    k9s
+    stern # multi-pod log tailing
+
+    # Cloud & secrets
+    awscli2 # needed by kubeconfig `aws eks get-token`
+    aws-vault
+    sops
+    age
+
+    # Data wrangling
+    yq-go # jq for YAML
+
+    # Python dev
+    pixi
+
+    # Node.js (npm, npx)
+    nodejs_22
+  ];
+
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true; # faster cached nix shells
+  };
+
+  programs.git = {
+    enable = true;
+    signing.format = "openpgp";
+    settings = {
+      user.name = "antalakas";
+      user.email = "antalakas@gmail.com";
+      init.defaultBranch = "main";
+      pull.rebase = true;
+      push.autoSetupRemote = true;
+      url."git@github.com:".insteadOf = "https://github.com/";
+    };
+  };
+
+  # Long-running work belongs in tmux: on a machine reached only over SSH, a
+  # dropped connection otherwise takes the build with it.
+  programs.tmux = {
+    enable = true;
+    mouse = true;
+    historyLimit = 50000;
+    escapeTime = 10; # the default 500ms is felt as lag by vim
+    keyMode = "vi";
+    clock24 = true;
+    terminal = "tmux-256color";
+    extraConfig = ''
+      # Truecolor passthrough, so colorschemes match a local terminal.
+      set -ga terminal-overrides ",*256col*:Tc"
+      set -g renumber-windows on
+      set -g set-clipboard on
+    '';
+  };
+
+  programs.zsh = {
+    enable = true;
+    history = {
+      size = 10000;
+      save = 10000;
+      path = "${config.home.homeDirectory}/.zsh_history";
+      ignoreDups = true;
+      share = true;
+    };
+
+    oh-my-zsh = {
+      enable = true;
+      plugins = [ "git" "sudo" "history" "fzf" "kubectl" "aws" ];
+    };
+
+    initContent = ''
+      # Powerlevel10k
+      source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
+      [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+      # Aliases
+      alias ls='eza --icons'
+      alias ll='eza -la --icons'
+      alias cat='bat'
+      alias lg='lazygit'
+      alias ld='lazydocker'
+
+      # Kubernetes aliases
+      alias k='kubectl'
+      alias kctx='kubectx'
+      alias kns='kubens'
+
+      # Local secrets (not tracked by git)
+      [[ -f ~/.zshrc.secrets ]] && source ~/.zshrc.secrets
+    '';
+  };
+
+  xdg.configFile = {
+    # aws-vault configuration
+    "aws-vault/config".text = ''
+      # Default session duration
+      duration=8h
+    '';
+  };
+
+  home.file = {
+    # Claude Code sandbox. Needs nothing but Docker, so it is identical on
+    # every host; the machine-specific parts (GitHub PATs, reference mounts,
+    # profile logins) live outside the nix store — see docs/forge-install.md.
+    ".config/claude-code/Dockerfile".source = ../dotfiles/claude-code/Dockerfile;
+    ".local/bin/claude-sandbox" = {
+      source = ../dotfiles/claude-code/claude-sandbox;
+      executable = true;
+    };
+  };
+}
