@@ -87,7 +87,7 @@ in
     mpv               # Lightweight video player
     ffmpeg            # Video/audio tools (ffmpeg, ffprobe, ffplay)
     dbeaver-bin        # SQL editor and database manager
-    zed-editor-fhs    # Zed code editor (FHS variant for easy extension installs)
+    # zed-editor-fhs is installed by programs.zed-editor below
     zoom-us            # Zoom video conferencing
     teams-for-linux    # Microsoft Teams (community Electron wrapper)
     klavaro            # Touch typing tutor
@@ -184,6 +184,43 @@ in
       # Default session duration
       duration=8h
     '';
+  };
+
+  # ─────────────────────────────────────────────────────────────
+  # Zed
+  # ─────────────────────────────────────────────────────────────
+  # mutableUserSettings defaults to true, so settings.json stays writable and
+  # Zed's own UI keeps working — activation merges these keys over whatever
+  # Zed wrote (`$dynamic * $static`, so these win on every `nrs`). Keeping
+  # zed-editor-fhs as the package preserves the FHS extension installs.
+  # defaultEditor is left off so nixvim remains $EDITOR.
+  programs.zed-editor = {
+    enable = true;
+    package = pkgs.zed-editor-fhs;
+    userSettings = {
+      # By default the preview caps content at max_width (800px) and centres
+      # it, leaving a narrow strip on a wide screen. false renders edge to
+      # edge; if that turns out too wide for comfortable prose, drop this key
+      # and set `max_width` to something like 1400 instead.
+      markdown_preview.limit_content_width = false;
+    };
+  };
+
+  # ─────────────────────────────────────────────────────────────
+  # Default applications (MIME associations)
+  # ─────────────────────────────────────────────────────────────
+  # Note: this makes ~/.config/mimeapps.list a read-only store symlink, so
+  # "Open with → always use this" in a GUI file manager stops sticking —
+  # add associations here instead.
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      # Zed's desktop entry only advertises text/plain, so .md would otherwise
+      # fall to whichever text handler wins. Naming it explicitly keeps
+      # double-click on a .md landing in Zed (ctrl-shift-v for the preview).
+      "text/markdown" = "dev.zed.Zed.desktop";
+      "text/x-markdown" = "dev.zed.Zed.desktop";
+    };
   };
 
   # ─────────────────────────────────────────────────────────────

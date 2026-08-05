@@ -214,6 +214,11 @@ in
   services.tailscale.enable = true;
   networking.firewall.checkReversePath = false;
 
+  # Reach the ollama API (services.ollama, host = "0.0.0.0") from other tailnet
+  # nodes. Scoped to tailscale0 on purpose: the API is unauthenticated, so it
+  # must not be exposed on the LAN or any other interface.
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 11434 ];
+
   # Printing (Xerox B210 at 192.168.10.46)
   services.printing = {
     enable = true;
@@ -427,14 +432,16 @@ in
     ];
   };
 
+  # Portals. Deliberately no `config` block here: programs.niri already sets
+  # xdg.portal.config.niri = [ "gnome" "gtk" ] plus extraPortals =
+  # [ xdg-desktop-portal-gnome ], and defining config.niri replaces that
+  # wholesale. ScreenCast must land on the gnome backend — niri implements the
+  # org.gnome.Mutter.ScreenCast D-Bus API that backend drives, and does not
+  # work with xdg-desktop-portal-wlr, so routing it to wlr silently kills
+  # browser screen sharing.
   xdg.portal = {
     enable = true;
-    wlr.enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-    config = {
-      common.default = [ "wlr" "gtk" ];
-      niri.default = lib.mkForce [ "wlr" "gtk" ];
-    };
   };
 
   fonts.packages = with pkgs; [
@@ -450,6 +457,9 @@ in
   services.ollama = {
     enable = true;
     package = pinnedPkgs.ollama-cuda;
+    # Listen on all interfaces so other machines on the LAN (and containers)
+    # can reach the API, not just localhost.
+    host = "0.0.0.0";
     # Static user instead of DynamicUser so the models can live outside
     # /var/lib — the root filesystem is too small to hold them.
     user = "ollama";

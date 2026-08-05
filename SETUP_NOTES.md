@@ -89,16 +89,26 @@ waybar --config ~/.config/waybar/config.json --style ~/.config/waybar/style.css 
 ## Fixes Applied
 
 ### XDG Portal (for screen sharing, file dialogs)
-The niri module had wrong portal defaults. Fixed with:
+Leave the portal *backend selection* to `programs.niri`, which already sets
+`extraPortals = [ xdg-desktop-portal-gnome ]` and
+`xdg.portal.config.niri = [ "gnome" "gtk" ]`. Only add the gtk backend:
 ```nix
 xdg.portal = {
   enable = true;
-  wlr.enable = true;
   extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-  config.common.default = [ "wlr" "gtk" ];
 };
-xdg.portal.config.niri.default = lib.mkForce [ "wlr" "gtk" ];
 ```
+Do **not** set `wlr.enable` or define `xdg.portal.config.niri` — defining the
+latter replaces the module's value wholesale. Screen sharing goes through the
+**gnome** backend: niri implements the `org.gnome.Mutter.ScreenCast` D-Bus API
+that xdg-desktop-portal-gnome drives, and has no xdg-desktop-portal-wlr
+support. An earlier revision of this file recommended forcing
+`[ "wlr" "gtk" ]`; that pointed ScreenCast at a backend niri can't talk to and
+broke browser screen sharing.
+
+Symptom when this is wrong: the browser's share dialog appears and completes,
+but `wpctl status` shows no node under `Video -> Streams` — the portal never
+creates a screencast stream.
 
 ### Environment Variables for Portals
 Niri config exports env to systemd at startup:
