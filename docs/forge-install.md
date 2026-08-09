@@ -3,21 +3,36 @@
 Headless development box: Minisforum MS-02 Ultra, Core Ultra 9 285HX, no GPU.
 Reached over SSH (normally across the tailnet) from the laptop.
 
-## Hardware notes before you assemble
+## Hardware and BIOS
 
-**Populate only the two 32GB Crucial sticks.** The board has four SODIMM slots,
-so all four modules fit — but mixing the matched 5200 kit with the unmatched
-Hynix 4800 1Rx8 modules trains everything down to 4800 at best, and four-DIMM
-DDR5 SODIMM configurations on Arrow Lake-HX frequently train lower or turn
-flaky. 64GB dual-channel runs two kind clusters, Docker and the Claude sandbox
-without strain. Keep the 16s as spares and only add them if you actually hit a
-memory ceiling — at which point expect the clock drop as the price.
+**All four SODIMM slots are populated: 2×32GB Crucial + 2×16GB Hynix, 96GB
+total.** The two kits do not match — the 5200 pair against unmatched 4800 1Rx8
+modules — so the set trains down to 4800 at best, and four-DIMM DDR5 SODIMM
+configurations on Arrow Lake-HX often settle lower than that. Check what it
+actually landed on rather than assuming:
 
-**In the BIOS, set "restore power state after AC loss" to *on*.** There is no
-IPMI on this box. Without that setting, a power cut means it stays down until
-someone is physically in front of it.
+```bash
+sudo dmidecode -t memory | grep -E "Size|Configured Memory Speed"
+```
 
-Secure Boot must be off (no lanzaboote in this config).
+The trade is deliberate: 96GB carries several kind clusters, Docker and the
+Claude sandbox at once, and memory bandwidth is not what limits this box.
+Capacity is. If it ever turns out to be flaky rather than merely slow — memtest
+errors, build failures that will not reproduce, a board that hesitates to POST —
+pull the two 16s and go back to the matched 64GB pair at full clock before
+suspecting anything else.
+
+BIOS settings, all of which matter because there is no IPMI on this box:
+
+- **Restore power state after AC loss: *on*.** Without it, a power cut means
+  the machine stays down until someone is physically in front of it.
+- **Wake on LAN / resume by PCIe device: *on*.** This is what keeps standby
+  power on the NIC after a poweroff so it can still see a magic packet. See
+  [§11](#11-wake-on-lan-from-the-jumpbox).
+- **ERP / EuP: *off*.** It is the deep standby cut, and leaving it enabled
+  overrides the setting above — the box will look configured for WoL and still
+  ignore the packet.
+- **Secure Boot: *off*** (no lanzaboote in this config).
 
 ## 1. Boot the installer
 
@@ -38,7 +53,6 @@ passwd nixos           # so you can scp things in if needed
 nix-shell -p git
 git clone https://github.com/antalakas/nix-systems /tmp/nix-systems
 cd /tmp/nix-systems
-git checkout headless-forge
 
 lsblk -o NAME,SIZE,MODEL,SERIAL   # which disk is which
 ls -l /dev/disk/by-id/            # the stable names for them
@@ -193,9 +207,120 @@ all on NixOS.
 so after `nix flake update` rebuild *both* hosts. If they drift anyway, set
 `"upload_binary_over_ssh": true` in the laptop's Zed settings.
 
+## 11. Wake-on-LAN from the jumpbox
+
+Same arrangement as the NUC: the Raspberry Pi already on this LAN idles at 5W
+and is on the tailnet, so it is the thing that stays up. Everything else can be
+off. Tailscale carries no layer-2 broadcast, which is exactly why the Pi is
+needed — the magic packet has to originate on forge's own segment. (Substitute
+your Pi's tailnet name for `jumpbox` below.)
+
+Set the BIOS bits from the top of this doc first; without them the rest of this
+section configures a NIC that has no standby power to listen with.
+
+### Pick a port that can do it
+
+```bash
+ip -br link                          # name of the port you actually patched
+sudo ethtool enp87s0 | grep -i wake
+#   Supports Wake-on: pumbg          <- 'g' is magic packet: this port can
+#   Wake-on: d                       <- but it is off right now
+```
+
+The i226 2.5GbE ports are the ones to rely on. If the port you patched reports
+`Supports Wake-on: d`, it cannot do this at all — move the cable to a 2.5GbE
+port rather than trying to talk it round.
+
+### Turn it on declaratively
+
+```nix
+# hosts/forge/default.nix — substitute the real interface name
+networking.interfaces.enp87s0.wakeOnLan.enable = true;
+```
+
+This is the one place the flake has to name an interface. It emits a systemd
+`.link` file (`40-enp87s0.link`) carrying `WakeOnLan=magic`, applied by udev as
+the device appears — so it takes effect even though this host runs
+NetworkManager rather than networkd. Rebuild and check the runtime state rather
+than trusting the config:
+
+```bash
+sudo ethtool enp87s0 | grep "Wake-on:"    # want 'g', not 'd'
+```
+
+If it still reads `d` once NetworkManager has brought the link up, NM is
+resetting it; pin it on the connection profile as well:
+
+```bash
+nmcli connection modify "Wired connection 1" 802-3-ethernet.wake-on-lan magic
+```
+
+### Record the MAC
+
+```bash
+ip link show enp87s0 | awk '/link\/ether/ {print $2}'
+```
+
+Wake-on-LAN is addressed at layer 2, so this MAC — not forge's tailnet name,
+not its IP — is what the Pi sends to. Put it somewhere you will still have when
+forge is off, since the machine cannot tell you its own MAC from powered down.
+Give it a DHCP reservation on the router at the same time: WoL does not need
+one, but a stable LAN address is what you will want on the day Tailscale is the
+thing that broke.
+
+### Wake it
+
+From the laptop, in one hop:
+
+```bash
+ssh jumpbox wakeonlan AA:BB:CC:DD:EE:FF
+ssh andreas@forge                          # ~40s later, once tailscaled is up
+```
+
+`wakeonlan` broadcasts to 255.255.255.255:9. If the Pi has more than one
+interface, aim it at the LAN broadcast address explicitly:
+
+```bash
+ssh jumpbox wakeonlan -i 192.168.1.255 AA:BB:CC:DD:EE:FF
+```
+
+`etherwake` works too and is what some Pi images ship instead, but it needs
+root and an interface: `sudo etherwake -i eth0 AA:BB:CC:DD:EE:FF`.
+
+Going the other way, shutdown is remote and safe — the packet can always bring
+it back:
+
+```bash
+ssh andreas@forge sudo systemctl poweroff
+```
+
+### Why poweroff and not suspend
+
+S3 would resume faster, but Arrow Lake-HX generally only offers s2idle. Check:
+
+```bash
+cat /sys/power/mem_sleep       # if there is no 'deep', don't build on suspend
+```
+
+Without `deep`, suspend keeps far more of the machine powered than S5 does and
+its network wake path is much less dependable here — which defeats the point of
+turning the box off. Poweroff plus a magic packet is the predictable pair, and
+a cold boot to a usable SSH session is under a minute anyway.
+
+### One dependency worth closing
+
+The Pi is only a fallback for a broken tailnet if it can reach forge over the
+LAN, and forge's `authorizedKeys` list is still the empty TODO in
+`hosts/forge/default.nix`. Paste in the laptop's public key (and the Pi's, if
+you want to hop) while you are editing that file for the WoL option — the two
+edits belong to the same idea.
+
 ## Day-to-day
 
 ```bash
+# wake forge from the laptop, via the Pi that is always on
+ssh jumpbox wakeonlan AA:BB:CC:DD:EE:FF
+
 # from the laptop, build and deploy forge without logging in
 nixos-rebuild switch --flake /etc/nixos#forge --target-host andreas@forge --use-remote-sudo
 
