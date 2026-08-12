@@ -44,8 +44,15 @@ ports need transceivers and a switch to match).
 
 ```bash
 sudo -i
-passwd nixos           # so you can scp things in if needed
+passwd nixos           # so you can ssh/scp in from the laptop
 ```
+
+Every step from here needs root. The commands below carry `sudo` explicitly so
+they work in a fresh shell too — if you stayed in the root shell above, the
+`sudo` is redundant and harmless. Note the `nixos` user ships with an empty
+password and sshd refuses empty-password logins, so `passwd nixos` is what
+makes remote access possible at all; `root` keeps its empty password and cannot
+be used over SSH regardless.
 
 ## 2. Fill in the disk IDs
 
@@ -86,25 +93,54 @@ Verify before continuing — `/mnt`, `/mnt/home`, `/mnt/nix`, `/mnt/var/lib/dock
 findmnt -R /mnt
 ```
 
+`/mnt/var/lib/docker` will show `compress=zstd:3` and no `nodatacow`, despite
+what `disko.nix` asks for. That is btrfs rather than a mistake: mount options
+apply per filesystem, not per subvolume, so the first mount wins and every
+subvolume after it inherits what `/` was mounted with. The NOCOW inode
+attribute is what actually works, and `systemd.tmpfiles.rules` in
+`hosts/forge/default.nix` sets it on first boot. Setting it here as well costs
+nothing and closes the window — the subvolume is empty exactly once, and the
+attribute only governs files created after it:
+
+```bash
+sudo chattr +C /mnt/var/lib/docker
+lsattr -d /mnt/var/lib/docker      # expect ---------------C------
+```
+
 ## 4. Generate the hardware scan
 
 ```bash
-nixos-generate-config --no-filesystems --root /mnt
+sudo nixos-generate-config --no-filesystems --root /mnt
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/nix-systems/hosts/forge/
 ```
 
 `--no-filesystems` is required: `disko.nix` already declares every filesystem,
 and a second set of definitions collides with it.
 
+`sudo` is not optional on the first command. It shells out to `btrfs subvolume
+show`, which needs root, and turns the failure into a fatal `Failed to retrieve
+subvolume info for /` that says nothing about permissions. The `cp` needs no
+sudo — it writes into `/tmp/nix-systems`, which you own.
+
 ## 5. Install
 
 ```bash
-cp -r /tmp/nix-systems /mnt/etc/nixos
-nixos-install --flake /mnt/etc/nixos#forge
+sudo cp -rT /tmp/nix-systems /mnt/etc/nixos
+sudo nixos-install --flake /mnt/etc/nixos#forge
 # set the root password when prompted
-nixos-enter --root /mnt -c 'passwd andreas'
+sudo nixos-enter --root /mnt -c 'passwd andreas'
 reboot
 ```
+
+`-T` matters. Step 4 already created `/mnt/etc/nixos`, so a plain `cp -r` copies
+*into* it and leaves you with `/mnt/etc/nixos/nix-systems/` — after which
+`nixos-install` fails, since there is no `flake.nix` at the path it was given.
+`-T` treats the destination as the directory to become, not a directory to drop
+things in.
+
+The `configuration.nix` that step 4 also wrote is left behind and unused: this
+host is built from the flake, which never reads it. Harmless, but do not edit it
+expecting an effect.
 
 ## 6. Join the tailnet
 
