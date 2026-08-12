@@ -46,6 +46,15 @@
   # port is patched, so no interface is named here.
   networking.networkmanager.enable = true;
 
+  # TODO: name the patched i226 2.5GbE port here to enable Wake-on-LAN, e.g.
+  #   networking.interfaces.enp87s0.wakeOnLan.enable = true;
+  #
+  # This is the one setting that has to know the interface name (it becomes a
+  # systemd .link file with WakeOnLan=magic, applied by udev, so NetworkManager
+  # not being networkd does not matter). With it plus the BIOS wake settings,
+  # the always-on Raspberry Pi on this LAN can power the box back up — the only
+  # remote-power story available without IPMI. See docs/forge-install.md §11.
+
   # No swap partition — zram absorbs spikes without writing to the SSD. Revisit
   # if you start running clusters big enough to actually need to page out.
   zramSwap.enable = true;
