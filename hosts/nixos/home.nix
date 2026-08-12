@@ -313,8 +313,7 @@ in
   # The Claude Code sandbox entries moved to home/common.nix — it needs only
   # Docker, so it is identical on every host.
   home.file = {
-    # Powerlevel10k config (if you have one)
-    # ".p10k.zsh".source = ../../dotfiles/p10k.zsh;
+    # The Powerlevel10k config moved to home/common.nix, so forge gets it too.
 
     # Niri profiles (both available, switch with niri-profile command)
     ".config/niri/config-home.kdl".source = ../../dotfiles/niri/config-home.kdl;
