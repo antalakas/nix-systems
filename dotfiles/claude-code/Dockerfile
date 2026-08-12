@@ -44,6 +44,30 @@ RUN set -eux; \
     chmod +x /usr/local/bin/helm; \
     rm -rf /tmp/helm.tgz "/tmp/linux-${ARCH}"
 
+# PostgreSQL + pgvector, for projects whose control plane is a Postgres app.
+# From PGDG rather than Debian: bookworm carries only postgresql-15, and no
+# pgvector at any version. apt reads an ASCII-armored key directly when the
+# filename ends in .asc, which avoids pulling in gnupg purely to dearmor it.
+#
+# Binaries only — no service is started and none is needed. This container runs
+# unprivileged, and postgres refuses to run as root regardless, so a cluster
+# lives in userspace wherever you initdb it:
+#   initdb -D /workspace/.pgdata -U <user> --auth=trust
+#   pg_ctl -D /workspace/.pgdata -o "-p 5433 -k /tmp" -l /tmp/pg.log start
+# The cluster the package creates for itself under /var/lib/postgresql is
+# dropped: nothing here can start it, and it only wastes layer space.
+ARG PG_MAJOR=16
+RUN set -eux; \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        -o /usr/share/keyrings/postgresql-archive-keyring.asc; \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/postgresql-archive-keyring.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        "postgresql-${PG_MAJOR}" "postgresql-${PG_MAJOR}-pgvector"; \
+    pg_dropcluster --stop "${PG_MAJOR}" main || true; \
+    rm -rf /var/lib/apt/lists/*
+
 ARG CLAUDE_CODE_VERSION=2.1.220
 
 RUN python3 -m venv /opt/mempalace \
@@ -76,7 +100,7 @@ EOF
 
 USER node
 ENV TERM=xterm-256color COLORTERM=truecolor \
-    PATH="/home/node/.local/bin:/opt/mempalace/bin:${PATH}" \
+    PATH="/home/node/.local/bin:/opt/mempalace/bin:/usr/lib/postgresql/${PG_MAJOR}/bin:${PATH}" \
     DISABLE_AUTOUPDATER=1 \
     MEMPALACE_PYTHON=/usr/local/bin/mempalace-python-capped
 
