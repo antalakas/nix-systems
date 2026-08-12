@@ -27,7 +27,8 @@
 # container and authenticated with it, so plain git fetch/push work despite the
 # sandbox having no SSH keys.
 #
-# Profiles live in ~/.claude-profiles/<name>/ with .claude/ and .claude.json
+# Profiles live in ~/.claude-profiles/<name>/ with .claude/ and .claude.json,
+# and optionally .aws/ — see the AWS credential selection section below.
 # Mempalace data is kept in per-profile Docker volumes:
 #   claude-code-sandbox-<profile>-mempalace -> /home/node/.mempalace
 #   claude-code-sandbox-<profile>-cache     -> /home/node/.cache
@@ -219,10 +220,47 @@ else
     GH_TOKEN_STATUS="none (no GitHub origin remote; use --owner)"
 fi
 
+# --- AWS credential selection -----------------------------------------------
+# Prefer a per-profile ~/.claude-profiles/<profile>/.aws over the host's ~/.aws.
+#
+# A personal IAM identity is the wrong thing to hand an agent: it carries the
+# owner's entire blast radius, and if it is MFA-gated — the usual way a personal
+# user is protected — every call fails anyway, since an agent cannot satisfy a
+# second factor. The fix is a scoped IAM user per profile: drop its credentials
+# in the profile's .aws/ and only that identity enters this container.
+#
+# Falling back to ~/.aws keeps existing setups working, so the banner names
+# which of the two was chosen rather than leaving it to be discovered by an
+# unexpected AccessDenied. Override with CLAUDE_SANDBOX_AWS_DIR=<path>, or
+# =none to mount no credentials at all.
+AWS_DIR="${CLAUDE_SANDBOX_AWS_DIR:-}"
+AWS_STATUS=""
+if [ "$AWS_DIR" = "none" ]; then
+    AWS_DIR=""
+    AWS_STATUS="none (CLAUDE_SANDBOX_AWS_DIR=none)"
+elif [ -n "$AWS_DIR" ]; then
+    if [ ! -d "$AWS_DIR" ]; then
+        # Docker would create the missing path as an empty root-owned directory
+        # and the container would silently have no credentials. Say so instead.
+        echo "❌ CLAUDE_SANDBOX_AWS_DIR=$AWS_DIR is not a directory." >&2
+        exit 1
+    fi
+    AWS_STATUS="$AWS_DIR (CLAUDE_SANDBOX_AWS_DIR)"
+elif [ -d "$PROFILE_DIR/.aws" ]; then
+    AWS_DIR="$PROFILE_DIR/.aws"
+    AWS_STATUS="$AWS_DIR (profile)"
+elif [ -d "$HOME/.aws" ]; then
+    AWS_DIR="$HOME/.aws"
+    AWS_STATUS="$AWS_DIR (host fallback — your personal identity)"
+else
+    AWS_STATUS="none"
+fi
+
 echo "🔒 Starting Claude Code in sandbox"
 echo "   Profile: $PROFILE"
 echo "   Project: $PROJECT_DIR"
 echo "   GitHub:  owner=${GH_OWNER:-<unknown>} token=$GH_TOKEN_STATUS"
+echo "   AWS:     $AWS_STATUS"
 echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
 echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
 echo ""
@@ -249,9 +287,12 @@ if [ -d "$HOME/.kube" ]; then
     DOCKER_ARGS+=(-v "$HOME/.kube:/home/node/.kube")
 fi
 
-# Mount AWS credentials/config if present (for awscli, EKS auth, etc.)
-if [ -d "$HOME/.aws" ]; then
-    DOCKER_ARGS+=(-v "$HOME/.aws:/home/node/.aws:ro")
+# Mount AWS credentials/config (for awscli, EKS auth, etc.). Resolved above.
+# Read-only: nothing in the container should be rewriting the host's credentials.
+# `aws sso login` cannot work through this and is not meant to — use static keys
+# for a scoped user, or run the login on the host and mount the result.
+if [ -n "$AWS_DIR" ]; then
+    DOCKER_ARGS+=(-v "$AWS_DIR:/home/node/.aws:ro")
 fi
 
 # Mount the host's global git config, so commits made in the sandbox carry the
