@@ -60,7 +60,19 @@
       "HIST_EXPIRE_DUPS_FIRST"
       "HIST_FIND_NO_DUPS"
     ];
+    # The wizard is switched off deliberately. p10k runs it on every
+    # interactive shell until ~/.p10k.zsh exists, and its final step wants to
+    # append a source line to ~/.zshrc — which home-manager owns as a read-only
+    # store symlink, so the option is greyed out and the wizard can never
+    # complete. On a machine that has never had a p10k config the result is an
+    # unusable shell: the wizard restarts on every login, including over SSH.
+    #
+    # Set here rather than in home/common.nix because /etc/zshrc is sourced
+    # first and covers root's shell too. The default prompt is what you get;
+    # run `p10k configure` by hand to produce ~/.p10k.zsh, which
+    # home/common.nix sources when present.
     promptInit = ''
+      POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
       source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
     '';
     ohMyZsh = {
