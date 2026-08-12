@@ -66,6 +66,20 @@
     storage-driver = "overlay2";
   };
 
+  # This, not the `nodatacow` in disko.nix, is what actually disables COW for
+  # container layers: btrfs applies most mount options per filesystem rather
+  # than per subvolume, so the options on every subvolume after the first are
+  # silently dropped and /var/lib/docker inherits the `compress=zstd` that /
+  # was mounted with. Verified on the install media — findmnt showed
+  # compress=zstd:3 and no nodatacow on the docker subvolume.
+  #
+  # The inode attribute is honoured per directory, and tmpfiles runs well
+  # before docker.service, so on a fresh install the subvolume is still empty
+  # when this lands and everything docker writes inherits NOCOW. It only
+  # affects new files, so it cannot repair a subvolume that already has data —
+  # on an existing host, move the directory aside and let docker repopulate it.
+  systemd.tmpfiles.rules = [ "h /var/lib/docker - - - - +C" ];
+
   users.users.andreas.openssh.authorizedKeys.keys = [
     # TODO: paste the laptop's ~/.ssh/id_ed25519.pub here to enable LAN SSH.
     #

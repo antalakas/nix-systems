@@ -58,6 +58,15 @@ in
                 # fragmentation rather than space. nodatacow also switches off
                 # checksums for this subvolume, which is the trade: docker
                 # state is reproducible, /home is not.
+                #
+                # NOTE: btrfs ignores the nodatacow below. Mount options are
+                # applied per filesystem, not per subvolume — the first mount
+                # wins and the rest are dropped, so this subvolume comes up
+                # with the `compress=zstd` from "/root" instead. It is kept
+                # because it states the intent at the point of definition, and
+                # would take effect if btrfs ever gains per-subvolume options.
+                # What actually disables COW is the systemd.tmpfiles rule in
+                # default.nix; the two have to stay in step.
                 "/docker" = {
                   mountpoint = "/var/lib/docker";
                   mountOptions = [ "noatime" "nodatacow" ];
