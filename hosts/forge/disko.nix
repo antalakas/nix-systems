@@ -8,11 +8,12 @@
 { lib, ... }:
 
 let
-  # TODO: replace both with stable paths from `ls -l /dev/disk/by-id/`.
   # by-id, never /dev/nvme0n1 — enumeration order is not stable across boots,
-  # and getting it wrong here formats the wrong disk.
-  mainDisk = "/dev/disk/by-id/nvme-WD_BLACK_SN850X_4000GB_REPLACE_ME";
-  scratchDisk = "/dev/disk/by-id/nvme-REPLACE_ME_1TB";
+  # and getting it wrong here formats the wrong disk. These are the serials of
+  # the drives actually in the machine; re-read `ls -l /dev/disk/by-id/` before
+  # trusting this file again if either is ever swapped.
+  mainDisk = "/dev/disk/by-id/nvme-WD_BLACK_SN850X_4000GB_262004800250";
+  scratchDisk = "/dev/disk/by-id/nvme-PC_SN810_NVMe_WDC_1024GB_230993473207";
 in
 {
   disko.devices.disk = {
