@@ -282,7 +282,9 @@ NetworkManager rather than networkd. Rebuild and check the runtime state rather
 than trusting the config:
 
 ```bash
-sudo ethtool eno2 | grep "Wake-on:"    # want 'g', not 'd'
+sudo ethtool eno2 | grep "Wake-on:"
+#   Supports Wake-on: pumbg          <- confirmed on this machine
+#   Wake-on: g                       <- armed; 'd' would mean it is not
 ```
 
 If it still reads `d` once NetworkManager has brought the link up, NM is
@@ -308,7 +310,8 @@ what you will want on the day Tailscale is the thing that broke.
 
 ### Wake it
 
-From the laptop, in one hop:
+Confirmed working end to end on this machine — powered off, woken from the Pi,
+back on the tailnet. From the laptop, in one hop:
 
 ```bash
 ssh jumpbox wakeonlan 38:05:25:37:b8:40
@@ -345,13 +348,13 @@ its network wake path is much less dependable here — which defeats the point o
 turning the box off. Poweroff plus a magic packet is the predictable pair, and
 a cold boot to a usable SSH session is under a minute anyway.
 
-### One dependency worth closing
+### The LAN fallback
 
 The Pi is only a fallback for a broken tailnet if it can reach forge over the
-LAN, and forge's `authorizedKeys` list is still the empty TODO in
-`hosts/forge/default.nix`. Paste in the laptop's public key (and the Pi's, if
-you want to hop) while you are editing that file for the WoL option — the two
-edits belong to the same idea.
+LAN, which needs a key in `users.users.andreas.openssh.authorizedKeys.keys`
+rather than the tailnet ACLs Tailscale SSH checks. The laptop's key is in
+`hosts/forge/default.nix`; add the Pi's too if you want to hop rather than only
+send packets from it.
 
 ## Day-to-day
 
@@ -370,6 +373,31 @@ nrb        # boot (safer for anything touching networking or the bootloader)
 For changes that could take the network down, prefer `nrb` plus a reboot you
 can watch, or `nixos-rebuild test` — a broken `switch` on a machine with no
 IPMI means a trip to wherever it lives.
+
+### Git in /etc/nixos needs sudo
+
+The clone was made as root during the install, so git run as `andreas` refuses
+it:
+
+```
+fatal: detected dubious ownership in repository at '/etc/nixos'
+```
+
+Use `sudo git -C /etc/nixos ...`. Do not take git's suggestion of adding a
+`safe.directory` exception: that only silences the check, leaving the files
+root-owned, so the next `git pull` fails on write permission instead. Chowning
+the tree to `andreas` would work, but it gives every process running as you —
+including the Claude Code sandbox and anything in Docker — write access to what
+root builds into the system. `sudo` keeps that an explicit step.
+
+Note that powerlevel10k's git status in the prompt reads the repo directly and
+does not enforce `safe.directory`, so it will happily show a dirty `/etc/nixos`
+that the git CLI then refuses to tell you anything about.
+
+One consequence worth knowing when pulling: the install edits `disko.nix` and
+`hardware-configuration.nix` in place, so those files can be locally modified
+against a remote that has since gained the same values. Read
+`sudo git -C /etc/nixos diff` before discarding anything.
 
 ## Not set up yet
 

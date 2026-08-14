@@ -5,6 +5,10 @@ result-*
 # Ignore automatically generated direnv output
 .direnv
 
+# Editor swap files. These turn up because configs get edited in place on a
+# host — /etc/nixos is a working tree too, and a crashed vim leaves one behind.
+.*.sw[a-p]
+
 # Ignore files containing secrets (also marked with --skip-worktree)
 wireguard-secrets.nix
 
