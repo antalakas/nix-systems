@@ -109,6 +109,7 @@
     # DNS/network tools
     dnsutils # nslookup, dig
     nmap
+    ethtool # link state, and the only way to see whether WoL is actually armed
 
     # Build tools
     gnumake
