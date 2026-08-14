@@ -258,7 +258,8 @@ section configures a NIC that has no standby power to listen with.
 
 ```bash
 ip -br link                          # name of the port you actually patched
-sudo ethtool enp87s0 | grep -i wake
+#   eno2   UP   38:05:25:37:b8:40    <- the one with carrier on this machine
+sudo ethtool eno2 | grep -i wake
 #   Supports Wake-on: pumbg          <- 'g' is magic packet: this port can
 #   Wake-on: d                       <- but it is off right now
 ```
@@ -270,18 +271,18 @@ port rather than trying to talk it round.
 ### Turn it on declaratively
 
 ```nix
-# hosts/forge/default.nix — substitute the real interface name
-networking.interfaces.enp87s0.wakeOnLan.enable = true;
+# hosts/forge/default.nix — eno2 is the port patched on this machine
+networking.interfaces.eno2.wakeOnLan.enable = true;
 ```
 
 This is the one place the flake has to name an interface. It emits a systemd
-`.link` file (`40-enp87s0.link`) carrying `WakeOnLan=magic`, applied by udev as
+`.link` file (`40-eno2.link`) carrying `WakeOnLan=magic`, applied by udev as
 the device appears — so it takes effect even though this host runs
 NetworkManager rather than networkd. Rebuild and check the runtime state rather
 than trusting the config:
 
 ```bash
-sudo ethtool enp87s0 | grep "Wake-on:"    # want 'g', not 'd'
+sudo ethtool eno2 | grep "Wake-on:"    # want 'g', not 'd'
 ```
 
 If it still reads `d` once NetworkManager has brought the link up, NM is
@@ -294,22 +295,23 @@ nmcli connection modify "Wired connection 1" 802-3-ethernet.wake-on-lan magic
 ### Record the MAC
 
 ```bash
-ip link show enp87s0 | awk '/link\/ether/ {print $2}'
+ip link show eno2 | awk '/link\/ether/ {print $2}'
+#   38:05:25:37:b8:40        <- eno2, the patched port
 ```
 
 Wake-on-LAN is addressed at layer 2, so this MAC — not forge's tailnet name,
-not its IP — is what the Pi sends to. Put it somewhere you will still have when
-forge is off, since the machine cannot tell you its own MAC from powered down.
-Give it a DHCP reservation on the router at the same time: WoL does not need
-one, but a stable LAN address is what you will want on the day Tailscale is the
-thing that broke.
+not its IP — is what the Pi sends to. It is written down here and in
+`hosts/forge/default.nix` because the machine cannot tell you its own MAC from
+powered down, which is the only time you need it. Give it a DHCP reservation on
+the router at the same time: WoL does not need one, but a stable LAN address is
+what you will want on the day Tailscale is the thing that broke.
 
 ### Wake it
 
 From the laptop, in one hop:
 
 ```bash
-ssh jumpbox wakeonlan AA:BB:CC:DD:EE:FF
+ssh jumpbox wakeonlan 38:05:25:37:b8:40
 ssh andreas@forge                          # ~40s later, once tailscaled is up
 ```
 
@@ -317,11 +319,11 @@ ssh andreas@forge                          # ~40s later, once tailscaled is up
 interface, aim it at the LAN broadcast address explicitly:
 
 ```bash
-ssh jumpbox wakeonlan -i 192.168.1.255 AA:BB:CC:DD:EE:FF
+ssh jumpbox wakeonlan -i 192.168.1.255 38:05:25:37:b8:40
 ```
 
 `etherwake` works too and is what some Pi images ship instead, but it needs
-root and an interface: `sudo etherwake -i eth0 AA:BB:CC:DD:EE:FF`.
+root and an interface: `sudo etherwake -i eth0 38:05:25:37:b8:40`.
 
 Going the other way, shutdown is remote and safe — the packet can always bring
 it back:
@@ -355,7 +357,7 @@ edits belong to the same idea.
 
 ```bash
 # wake forge from the laptop, via the Pi that is always on
-ssh jumpbox wakeonlan AA:BB:CC:DD:EE:FF
+ssh jumpbox wakeonlan 38:05:25:37:b8:40
 
 # from the laptop, build and deploy forge without logging in
 nixos-rebuild switch --flake /etc/nixos#forge --target-host andreas@forge --use-remote-sudo

@@ -43,17 +43,22 @@
 
   # NetworkManager rather than systemd-networkd, to match the laptop and to
   # keep `nmcli` available for a WireGuard profile later. DHCP on whichever
-  # port is patched, so no interface is named here.
+  # port is patched, so no interface is named for addressing — the one below is
+  # named only because Wake-on-LAN cannot be expressed without it.
   networking.networkmanager.enable = true;
 
-  # TODO: name the patched i226 2.5GbE port here to enable Wake-on-LAN, e.g.
-  #   networking.interfaces.enp87s0.wakeOnLan.enable = true;
+  # eno2 is the patched port — MAC 38:05:25:37:b8:40, the address the Pi sends
+  # the magic packet to. It is recorded here because forge cannot tell you its
+  # own MAC while powered down, which is exactly when you need it. eno1
+  # (38:05:25:37:b8:41) is the unused twin.
   #
   # This is the one setting that has to know the interface name (it becomes a
   # systemd .link file with WakeOnLan=magic, applied by udev, so NetworkManager
   # not being networkd does not matter). With it plus the BIOS wake settings,
   # the always-on Raspberry Pi on this LAN can power the box back up — the only
-  # remote-power story available without IPMI. See docs/forge-install.md §11.
+  # remote-power story available without IPMI. See docs/forge-install.md §11,
+  # which also covers verifying it with ethtool rather than trusting the config.
+  networking.interfaces.eno2.wakeOnLan.enable = true;
 
   # No swap partition — zram absorbs spikes without writing to the SSD. Revisit
   # if you start running clusters big enough to actually need to page out.
@@ -80,13 +85,13 @@
   # on an existing host, move the directory aside and let docker repopulate it.
   systemd.tmpfiles.rules = [ "h /var/lib/docker - - - - +C" ];
 
+  # Not needed for tailnet access: Tailscale SSH (modules/server.nix) checks
+  # tailnet ACLs, not this list. This is the LAN path that stays open on the day
+  # Tailscale is the thing that broke — otherwise the only ways in would be the
+  # tailnet and the physical console.
   users.users.andreas.openssh.authorizedKeys.keys = [
-    # TODO: paste the laptop's ~/.ssh/id_ed25519.pub here to enable LAN SSH.
-    #
-    # Not needed for tailnet access: Tailscale SSH (modules/server.nix) checks
-    # tailnet ACLs, not this list. Leaving it empty means the only paths in are
-    # the tailnet and the physical console — which is a real corner to be
-    # painted into if Tailscale is ever the thing that broke.
+    # the laptop
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlPc0tM6OBS5qjtF4OOieQAXa7ki0AD78YK+7i4thkc antalakas@gmail.com"
   ];
 
   # The release this host was first installed from. Set once, at install, and
