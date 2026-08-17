@@ -7,6 +7,13 @@
 
   home.stateVersion = "26.11";
 
+  # The mempalace miner's CPU cap inside the Claude sandbox. The image defaults
+  # to 6, a number chosen for the laptop's 22 cores after the miner pegged 15 of
+  # them; this box has 24, so half is both a real increase and enough headroom
+  # left for a build or a kind cluster running alongside. claude-sandbox
+  # forwards the variable only when the host sets one — see docs/forge-install.md §8.
+  home.sessionVariables.MEMPALACE_MINE_CPUS = "12";
+
   # Zed remote development.
   #
   # Zed's client pushes a `zed-remote-server-stable-<version>` binary to
