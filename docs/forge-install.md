@@ -171,7 +171,14 @@ nix run nixpkgs#ssh-to-age -- -i /etc/ssh/ssh_host_ed25519_key.pub
 age-keygen -o ~/.config/sops/age/keys.txt
 ```
 
-Put both public keys into `.sops.yaml`, then create the encrypted file:
+Both public keys go into `.sops.yaml` — forge's so the machine can unlock its
+own secrets on boot with nothing else provisioned, yours so they are still
+readable if it cannot. The second key is the only recovery path; `.sops.yaml`
+says why at length.
+
+Create the file from the laptop, at the repo root: that is where your personal
+key lives, and `sops` resolves `creation_rules` relative to the `.sops.yaml` it
+finds by walking up from the file it is editing.
 
 ```bash
 sops secrets/forge.yaml
@@ -181,8 +188,73 @@ sops secrets/forge.yaml
 tailscale_authkey: tskey-auth-...   # from the Tailscale admin console
 ```
 
-Commit it (it is encrypted), rebuild, and `hosts/forge/secrets.nix` starts
-being imported automatically. A reinstall now rejoins the tailnet unattended.
+Then the step that is easy to skip, because nothing complains when you don't:
+
+```bash
+git add secrets/forge.yaml
+```
+
+`hosts/forge/default.nix` imports `secrets.nix` behind `builtins.pathExists
+../../secrets/forge.yaml`, and a flake evaluates against a copy of the tree
+containing only tracked files. An untracked `secrets/forge.yaml` is invisible
+to that check, so the import silently stays off and the rebuild succeeds having
+changed nothing at all. Commit it too — it is encrypted, which is the point of
+committing it.
+
+Rebuild, then check the secret landed rather than trusting the build:
+
+```bash
+sudo ls -l /run/secrets/tailscale_authkey   # expect root:root, 0400
+systemctl status tailscaled-autoconnect
+```
+
+### The auth key expires and nothing tells you
+
+Tailscale caps auth keys at 90 days. Make this one **reusable**, so a reinstall
+can spend it more than once — and know that `tailscaled-autoconnect` only sends
+it when the backend reports `NeedsLogin`, `NeedsMachineAuth` or `Stopped`. While
+forge is up and `Running` the unit logs "Tailscale is running" and exits without
+touching the key. So an expired key costs nothing day to day and fails at
+exactly the moment you were relying on it. Re-run `sops secrets/forge.yaml` when
+you rotate it.
+
+If the tailnet requires manual device approval, mark the key pre-authorized as
+well, or the unattended rejoin stops at "waiting for approval":
+
+```nix
+services.tailscale.authKeyParameters.preauthorized = true;
+```
+
+### What an unattended reinstall actually needs
+
+A reinstall generates a *new* SSH host key, and with it a new age key that is
+not the one in `.sops.yaml`. Decryption fails for the host, the secret never
+appears under `/run/secrets`, and the box does not rejoin — the failure
+`.sops.yaml` warns about, arriving through the front door.
+
+So back the host key up now, off this machine, and restore it before
+`nixos-install` runs against the reinstalled disk:
+
+```bash
+# now, while forge is up. The redirect runs as you, so the file is yours;
+# it holds a private key, so treat it like the age key and keep it off-box.
+sudo tar -C /etc/ssh -cf - ssh_host_ed25519_key ssh_host_ed25519_key.pub \
+  > forge-hostkey.tar
+chmod 600 forge-hostkey.tar
+
+# during a reinstall, after step 3 and before step 5
+sudo install -d -m 755 /mnt/etc/ssh
+sudo tar -C /mnt/etc/ssh -xf forge-hostkey.tar
+sudo chmod 600 /mnt/etc/ssh/ssh_host_ed25519_key
+```
+
+sshd only generates host keys that are missing, so restoring them first also
+keeps forge's SSH fingerprint stable across the reinstall — no `known_hosts`
+warning on the laptop.
+
+Without that tarball, the honest version of this step is that a reinstall costs
+one console visit to run `tailscale up` by hand, plus a `sops updatekeys
+secrets/forge.yaml` to re-encrypt to the new host key.
 
 ## 8. Claude Code sandbox
 
