@@ -138,9 +138,21 @@ reboot
 `-T` treats the destination as the directory to become, not a directory to drop
 things in.
 
-The `configuration.nix` that step 4 also wrote is left behind and unused: this
-host is built from the flake, which never reads it. Harmless, but do not edit it
-expecting an effect.
+Step 4 also wrote `configuration.nix` and a top-level
+`hardware-configuration.nix`, and `cp -rT` lays the flake over them without
+removing them — it overwrites matching names and leaves everything else alone.
+Neither is read: this host is built from the flake, and the real hardware scan
+is `hosts/forge/hardware-configuration.nix`. Delete both:
+
+```bash
+sudo rm /etc/nixos/configuration.nix /etc/nixos/hardware-configuration.nix
+```
+
+That is not tidiness. Left in place they are untracked files in a git working
+tree, so `/etc/nixos` reads as dirty from the first boot onwards — and a repo
+that is always dirty is one whose *real* local edits you stop noticing. That is
+exactly the state the Day-to-day note warns about, where in-place changes to
+`disko.nix` need reading before anything is discarded.
 
 ## 6. Join the tailnet
 
