@@ -237,6 +237,29 @@ well, or the unattended rejoin stops at "waiting for approval":
 services.tailscale.authKeyParameters.preauthorized = true;
 ```
 
+### The device key expires too, on a different clock
+
+Two clocks, easily conflated. The 90 days above only governs whether the auth
+key can still enrol a machine. Separately, forge's own *node* key expires on the
+tailnet default of 180 days, after which the box drops off and needs
+re-authenticating — on a headless machine with no IPMI, that means the LAN key
+path or a walk to wherever it lives. Nothing warns you, and it will land on a
+day you were not thinking about Tailscale.
+
+Turn it off once the box is enrolled: **Machines → forge → Disable key expiry**
+in the admin console. There is no `tailscale` CLI equivalent; it is a console
+or API operation.
+
+This is not carried in the flake, and a reinstall re-enrols forge as a new
+device — which arms a fresh 180-day clock. So it belongs on the list of things
+to redo after an install, alongside restoring the host key below.
+
+Tagging the device achieves the same thing (key expiry is disabled by default
+for tagged devices), but tags move ownership from you to the tag, and
+`modules/server.nix` runs Tailscale SSH against tailnet ACLs — so unless
+`tagOwners` and the matching `ssh` rules are already in the policy file, tagging
+can quietly remove your own SSH access. Disable the expiry and skip the tags.
+
 ### What an unattended reinstall actually needs
 
 A reinstall generates a *new* SSH host key, and with it a new age key that is
