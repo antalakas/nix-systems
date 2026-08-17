@@ -263,6 +263,9 @@ echo "   GitHub:  owner=${GH_OWNER:-<unknown>} token=$GH_TOKEN_STATUS"
 echo "   AWS:     $AWS_STATUS"
 echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
 echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
+if [ -n "${MEMPALACE_MINE_CPUS:-}" ]; then
+    echo "   Miner CPUs: $MEMPALACE_MINE_CPUS (host override; image default is 6)"
+fi
 echo ""
 
 DOCKER_ARGS=(
@@ -280,6 +283,20 @@ DOCKER_ARGS=(
     -e SENTENCE_TRANSFORMERS_HOME="$MEMPALACE_CACHE_DIR/sentence-transformers"
     --network=host
 )
+
+# The mempalace miner's CPU cap. The image's mempalace-python-capped wrapper
+# reads MEMPALACE_MINE_CPUS at runtime and falls back to 6 — a laptop number,
+# picked because the miner pegged 15 of that machine's 22 cores. Nothing carried
+# the host's value across before this, so setting it outside the container did
+# nothing and a bigger box silently stayed at 6.
+#
+# Forwarded by name rather than as NAME=value, so leaving it unset on the host
+# leaves it unset in the container and the image default applies — passing an
+# empty string would floor the cap at 1 instead.
+if [ -n "${MEMPALACE_MINE_CPUS:-}" ]; then
+    export MEMPALACE_MINE_CPUS
+    DOCKER_ARGS+=(-e MEMPALACE_MINE_CPUS)
+fi
 
 # Mount kubeconfig if present (for kubectl/helm inside the sandbox).
 # rw because cloud-provider auth plugins refresh tokens in the file.

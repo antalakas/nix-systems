@@ -327,7 +327,20 @@ Two things differ from the laptop:
   local registry on `localhost` with no extra plumbing.
 - `MEMPALACE_MINE_CPUS` defaults to 6 (see `dotfiles/claude-code/Dockerfile`).
   That cap exists because the miner pegged 15 of the laptop's 22 cores; with 24
-  here you can raise it.
+  here you can raise it:
+
+  ```bash
+  MEMPALACE_MINE_CPUS=12 claude-sandbox
+  ```
+
+  `claude-sandbox` forwards the variable only when the host sets one, and the
+  startup banner prints a `Miner CPUs:` line when it does — if that line is
+  absent you are still on 6, whatever you exported. To make it permanent for
+  this host, put it in `hosts/forge/home.nix`:
+
+  ```nix
+  home.sessionVariables.MEMPALACE_MINE_CPUS = "12";
+  ```
 
 ## 9. Kubernetes
 
