@@ -165,7 +165,7 @@ Now that the host has an SSH host key, it can decrypt its own secrets.
 
 ```bash
 # on forge
-nix run nixpkgs#ssh-to-age -- -i /etc/ssh/ssh_host_ed25519_key.pub
+ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
 
 # on the laptop, if you don't already have a personal age key
 age-keygen -o ~/.config/sops/age/keys.txt
@@ -435,6 +435,91 @@ rather than the tailnet ACLs Tailscale SSH checks. The laptop's key is in
 `hosts/forge/default.nix`; add the Pi's too if you want to hop rather than only
 send packets from it.
 
+## 12. Backups to /srv
+
+`hosts/forge/backup.nix` runs restic daily into `/srv/restic/forge`, on the 1TB
+drive kept off the main filesystem on purpose.
+
+Be clear about what it is: a second-disk backup. It survives the 4TB failing, a
+bad `rm`, and a rebuild that eats `/home`. It does not survive theft, fire, or
+a power supply that takes both NVMe drives with it, because `/srv` is in the
+same chassis. It is the first tier — add a remote repository (restic speaks S3,
+B2 and rclone) once something here would genuinely hurt to lose.
+
+### Put the password in sops *before* rebuilding
+
+An ordering trap rather than a suggestion. `hosts/forge/secrets.nix` declares
+`restic_password`, and sops-install-secrets fails activation for a secret the
+file does not contain — so rebuilding first buys you a broken activation on a
+headless box.
+
+```bash
+# on the laptop, at the repo root
+openssl rand -base64 32       # generate it, then paste it in below
+sops secrets/forge.yaml
+```
+
+```yaml
+tailscale_authkey: tskey-auth-...
+restic_password: <the generated string>
+```
+
+Commit, pull on forge, then `nrt` before `nrs` as usual.
+
+Note what the repository's readability now rests on. That password is encrypted
+to your personal age key and to forge's host key, so losing
+`~/.config/sops/age/keys.txt` while forge is also gone leaves the backups
+unreadable, permanently, by anyone. The age-key backup `.sops.yaml` insists on
+is now protecting the backups too — not just a tailnet key you can always
+reissue from the admin console.
+
+### What it carries
+
+`/home/andreas` and `/etc/nixos`. Everything else here is reproducible: the
+store rebuilds from the flake, `/var/lib/docker` is images and kind clusters
+that come back with a pull, and `/srv` is the repository itself. `/etc/nixos`
+is already on GitHub, but it is also where the install's in-place edits to
+`disko.nix` and `hardware-configuration.nix` sit before anyone pushes them.
+
+Caches, `node_modules`, `.venv`, `.direnv` and `.pixi` are excluded, plus
+anything carrying a `CACHEDIR.TAG` via `--exclude-caches` — which covers cargo
+and friends without naming them.
+
+### Driving it
+
+The module installs a `restic-local` wrapper carrying the repository and
+password in its environment, so you never pass `-r` or type the password. The
+repository is `0700 root`, so these want `sudo`:
+
+```bash
+sudo restic-local snapshots
+sudo restic-local stats
+sudo systemctl start restic-backups-local      # run one now, don't wait
+systemctl list-timers restic-backups-local
+journalctl -u restic-backups-local -n 50
+```
+
+Restoring, which is the only part that actually matters — do it once now, to a
+throwaway target, rather than discovering the syntax on a bad day:
+
+```bash
+sudo restic-local restore latest --target /tmp/restore --include /home/andreas/workspace
+```
+
+### The schedule assumes the box is off
+
+`Persistent = true` is load-bearing here rather than a default worth leaving
+alone. forge is powered off between sessions ([§11](#11-wake-on-lan-from-the-jumpbox)),
+so most daily runs fall while it is down; without it they are skipped outright
+and the repository quietly stops gaining snapshots. With it, a missed run fires
+after the next boot — hence `RandomizedDelaySec`, so a backup does not kick off
+the instant you wake the machine to use it.
+
+Retention is 7 daily, 5 weekly and 12 monthly, applied by `restic forget
+--prune` after each run. `checkOpts = [ "--read-data-subset=2%" ]` verifies a
+rotating slice of the pack files each night, so the whole repository gets read
+over a couple of months without paying for a full verify every time.
+
 ## Day-to-day
 
 ```bash
@@ -526,7 +611,8 @@ unauthenticated.
   with secrets from sops — and keep it split-tunnel. A full-tunnel WireGuard
   brought up over an SSH session that arrived via Tailscale will cut that
   session.
-- **Backups.** `/srv` on the 1TB drive is the intended restic target; nothing
-  writes to it yet.
+- **Off-site backups.** The restic repository in [§12](#12-backups-to-srv) is
+  on a second disk in this chassis, which is not a backup of the chassis. A
+  remote target is the obvious next tier.
 - **Ollama.** No GPU here, so the laptop stays the place for local models. Its
   API is already reachable across the tailnet on port 11434.

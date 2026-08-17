@@ -17,7 +17,12 @@
   # sops-nix cannot encrypt for this host until it has an SSH host key, which
   # only exists after the first install. Until secrets/forge.yaml is committed,
   # Tailscale is brought up by hand once and nothing here references a secret.
-  ++ lib.optional (builtins.pathExists ../../secrets/forge.yaml) ./secrets.nix;
+  # backup.nix rides along on the same condition: restic's repository password
+  # comes from that file, and restic has nothing to do without it.
+  ++ lib.optionals (builtins.pathExists ../../secrets/forge.yaml) [
+    ./secrets.nix
+    ./backup.nix
+  ];
 
   networking.hostName = "forge";
 
