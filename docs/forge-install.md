@@ -453,16 +453,25 @@ An ordering trap rather than a suggestion. `hosts/forge/secrets.nix` declares
 file does not contain — so rebuilding first buys you a broken activation on a
 headless box.
 
+Do this in your own clone on the laptop, not `/etc/nixos`. That one is
+root-owned so you cannot write the file, and reaching for `sudo` makes it
+worse: `sudo` resets `HOME` to `/root`, where there is no
+`~/.config/sops/age/keys.txt`, so sops reports it cannot decrypt with any key.
+
 ```bash
-# on the laptop, at the repo root
-openssl rand -base64 32       # generate it, then paste it in below
+cd ~/dev/nix-systems
+head -c 32 /dev/urandom | base64      # generate, then paste it in below
 sops secrets/forge.yaml
 ```
 
 ```yaml
 tailscale_authkey: tskey-auth-...
-restic_password: <the generated string>
+restic_password: "<the generated string>"
 ```
+
+`openssl` is not in this system's closure — the coreutils line above needs
+nothing that is not already on every host. Quote the value, since base64 can
+end in `=`.
 
 Commit, pull on forge, then `nrt` before `nrs` as usual.
 
