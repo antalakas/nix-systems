@@ -471,6 +471,47 @@ One consequence worth knowing when pulling: the install edits `disko.nix` and
 against a remote that has since gained the same values. Read
 `sudo git -C /etc/nixos diff` before discarding anything.
 
+### …and an HTTPS remote, for the same reason
+
+`sudo git` runs as root, and root has no SSH key — yours is in
+`~andreas/.ssh` and is never consulted. So a clone with an SSH remote fails the
+moment you pull, well after the ownership problem above is out of the way:
+
+```
+git@github.com: Permission denied (publickey).
+```
+
+The repo is public, so HTTPS needs no credentials at all and root needs no key:
+
+```bash
+sudo git -C /etc/nixos remote set-url origin https://github.com/antalakas/nix-systems.git
+```
+
+This is the shape to want rather than a workaround. `/etc/nixos` is a deploy
+target, not a working clone: it only ever reads. Pushing happens from a normal
+clone under `~`, which has your key and your committer identity. Forwarding an
+agent into root, or `-c core.sshCommand="ssh -i /home/andreas/.ssh/id_ed25519"`,
+both work and both re-earn the problem on every machine and every reinstall.
+Step 2 clones over HTTPS onto the installer for exactly this reason.
+
+Deploying forge from your own checkout sidesteps the root clone entirely, and
+is worth knowing on the day `/etc/nixos` is mid-conflict:
+
+```bash
+nixos-rebuild switch --flake ~/dev/nix-systems#forge \
+  --target-host andreas@forge --use-remote-sudo
+```
+
+`/etc/nixos` still has to be current for the laptop's *own* rebuilds, so this
+defers the pull rather than removing it.
+
+Unrelated to any of this, but it appears in the same scrollback the first time
+you pull as root: `github.com` is a new host to root's `known_hosts`, so you
+get a fingerprint prompt. GitHub's real ED25519 fingerprint is
+`SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU` — worth actually checking
+rather than typing `yes`, since it is the one moment the connection is
+unauthenticated.
+
 ## Not set up yet
 
 - **WireGuard.** The laptop's `tiledb-wg` profile is not carried over. If
