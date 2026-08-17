@@ -4,7 +4,11 @@
 # A host's age key is derived from its SSH host key, which exists only after
 # the machine is installed. To add a new host, run on it:
 #
-#   nix run nixpkgs#ssh-to-age -- -i /etc/ssh/ssh_host_ed25519_key.pub
+#   ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+#
+# (ssh-to-age is in home/common.nix, so it is on PATH from the first boot —
+# deliberately not a `nix run nixpkgs#`, which needs the flake registry at
+# exactly the moments an install is least able to tolerate a failed fetch.)
 #
 # Every file is encrypted to two keys, and the second one is not redundancy for
 # convenience — it is the only recovery path. A host key dies with the host: a

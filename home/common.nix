@@ -46,6 +46,11 @@
     aws-vault
     sops
     age
+    # Derives a host's age key from its SSH host key — the bootstrap step in
+    # docs/forge-install.md §7. Installed rather than `nix run nixpkgs#`-ed
+    # because it is wanted during an install and a reinstall, which are exactly
+    # the moments a flake-registry fetch is least welcome.
+    ssh-to-age
 
     # Data wrangling
     yq-go # jq for YAML
