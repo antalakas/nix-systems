@@ -236,11 +236,18 @@ So back the host key up now, off this machine, and restore it before
 `nixos-install` runs against the reinstalled disk:
 
 ```bash
-# now, while forge is up. The redirect runs as you, so the file is yours;
-# it holds a private key, so treat it like the age key and keep it off-box.
+# now, while forge is up. `sudo` covers tar, not the redirect — that runs as
+# you, so it needs a directory you own. Run it from /etc/nixos and the shell
+# fails with "permission denied" before tar is even reached.
 sudo tar -C /etc/ssh -cf - ssh_host_ed25519_key ssh_host_ed25519_key.pub \
-  > forge-hostkey.tar
-chmod 600 forge-hostkey.tar
+  > ~/forge-hostkey.tar
+chmod 600 ~/forge-hostkey.tar
+
+# then copy it to the laptop and remove forge's copy. In /etc/ssh the key is
+# 0600 root; left in ~andreas it is readable by everything running as you,
+# which here includes the Claude sandbox and anything in Docker.
+scp andreas@forge:forge-hostkey.tar .     # from the laptop
+ssh andreas@forge rm ~/forge-hostkey.tar
 
 # during a reinstall, after step 3 and before step 5
 sudo install -d -m 755 /mnt/etc/ssh
