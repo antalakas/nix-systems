@@ -141,9 +141,14 @@ in
   # Slack then falls back to $HOME/Downloads inside the sandbox — and since
   # it has no --filesystem=home, that path is flatpak's tmpfs, so every
   # download silently vanished on restart.
+  # user-dirs.dirs is what flatpak reads, so the XDG_*_DIR session variables
+  # buy nothing here. home-manager's new default drops them (they go stale
+  # whenever the file changes); pinned explicitly because home.stateVersion is
+  # below 26.05, which would otherwise keep the legacy `true` and warn.
   xdg.userDirs = {
     enable = true;
     createDirectories = true;
+    setSessionVariables = false;
   };
 
   # ─────────────────────────────────────────────────────────────
