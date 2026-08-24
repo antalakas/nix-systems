@@ -45,6 +45,8 @@ in
     foliate           # EPUB ebook reader
     pinta             # Quick image editor for cropping and format conversion
     gthumb            # Image viewer and organizer with basic editing
+    nautilus          # GUI file manager; also the inode/directory handler the
+                      # portal needs for "open containing folder" (see mimeApps)
     obs-studio        # Screen recording and streaming
     wf-recorder       # Lightweight CLI screen recorder for Wayland
     mpv               # Lightweight video player
@@ -120,7 +122,28 @@ in
       # double-click on a .md landing in Zed (ctrl-shift-v for the preview).
       "text/markdown" = "dev.zed.Zed.desktop";
       "text/x-markdown" = "dev.zed.Zed.desktop";
+
+      # "Open containing folder" in flatpak apps (Slack) goes through the
+      # portal's OpenURI.OpenDirectory, which dispatches on inode/directory.
+      # With no handler registered the call silently no-ops rather than
+      # erroring, which reads as a broken button.
+      "inode/directory" = "org.gnome.Nautilus.desktop";
     };
+  };
+
+  # ─────────────────────────────────────────────────────────────
+  # XDG user directories
+  # ─────────────────────────────────────────────────────────────
+  # Required for the Slack flatpak's --filesystem=xdg-download to work at all.
+  # Flatpak resolves xdg-download via g_get_user_special_dir(), which reads
+  # ~/.config/user-dirs.dirs; with no such file GLib returns NULL (only
+  # DESKTOP has a built-in fallback), so flatpak skips the mount entirely.
+  # Slack then falls back to $HOME/Downloads inside the sandbox — and since
+  # it has no --filesystem=home, that path is flatpak's tmpfs, so every
+  # download silently vanished on restart.
+  xdg.userDirs = {
+    enable = true;
+    createDirectories = true;
   };
 
   # ─────────────────────────────────────────────────────────────
