@@ -256,11 +256,19 @@ else
     AWS_STATUS="none"
 fi
 
+# --- Reference mount root ---------------------------------------------------
+# refs.conf entries are written relative to this, so the same file works on
+# every machine and only the root moves. $HOME/workspace is the common case;
+# the laptop keeps its repos on an EndeavourOS mount and overrides it in
+# hosts/nixos/home.nix.
+CLAUDE_REFS_ROOT="${CLAUDE_REFS_ROOT:-$HOME/workspace}"
+
 echo "🔒 Starting Claude Code in sandbox"
 echo "   Profile: $PROFILE"
 echo "   Project: $PROJECT_DIR"
 echo "   GitHub:  owner=${GH_OWNER:-<unknown>} token=$GH_TOKEN_STATUS"
 echo "   AWS:     $AWS_STATUS"
+echo "   Refs:    root=$CLAUDE_REFS_ROOT"
 echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
 echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
 if [ -n "${MEMPALACE_MINE_CPUS:-}" ]; then
@@ -343,15 +351,46 @@ fi
 
 # Load read-only reference mounts from refs.conf.
 #
-# Lines are mounted verbatim, so keep each one narrow. A line mounting $HOME, or
-# ~/.config/claude-code itself, would hand the container the whole github-tokens
-# file and silently undo the per-owner token selection above.
+# The host side of each line is resolved against $CLAUDE_REFS_ROOT unless it is
+# already absolute. That is what lets one refs.conf serve every host: the repo
+# layout under the root is the same everywhere, only the root itself moves. An
+# absolute entry still works, as an escape hatch for a repo outside the root.
+#
+# Keep each entry a specific project directory. Mounting $HOME, ~/.config, or
+# ~/.config/claude-code would expose ~/.config/claude-code/github-tokens to the
+# container, which defeats the per-owner GitHub token selection above.
+#
+# A host path that does not exist is skipped with a warning rather than mounted.
+# Docker would otherwise create it as an empty root-owned directory, and the
+# agent would report an empty repository instead of a broken mount — which is
+# exactly what a wrong root on a new host produces, once per entry.
 REFS_CONF="$(readlink -f ~/.config/claude-code/refs.conf 2>/dev/null || true)"
 if [ -f "$REFS_CONF" ]; then
+    refs_missing=0
     while IFS= read -r line; do
-        [[ -z "$line" || "$line" == \#* ]] && continue
-        DOCKER_ARGS+=(-v "$line:ro")
+        [[ -z "${line//[[:space:]]/}" || "$line" == \#* ]] && continue
+        # Split on the last colon, the same rule docker itself uses.
+        ref_host="${line%:*}"
+        ref_target="${line##*:}"
+        if [ "$ref_host" = "$line" ] || [ -z "$ref_host" ] || [ -z "$ref_target" ]; then
+            echo "⚠️  refs.conf: malformed line, skipping: $line" >&2
+            continue
+        fi
+        case "$ref_host" in
+            /*) ;;
+            *) ref_host="$CLAUDE_REFS_ROOT/$ref_host" ;;
+        esac
+        if [ ! -d "$ref_host" ]; then
+            echo "⚠️  refs.conf: $ref_host does not exist — $ref_target not mounted" >&2
+            refs_missing=$((refs_missing + 1))
+            continue
+        fi
+        DOCKER_ARGS+=(-v "$ref_host:$ref_target:ro")
     done < "$REFS_CONF"
+    if [ "$refs_missing" -gt 0 ]; then
+        echo "   $refs_missing reference mount(s) skipped — is CLAUDE_REFS_ROOT=$CLAUDE_REFS_ROOT right for this host?" >&2
+        echo "" >&2
+    fi
 fi
 
 # Pass API key if set, otherwise browser auth will be used

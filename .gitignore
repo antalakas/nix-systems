@@ -12,8 +12,9 @@ result-*
 # Ignore files containing secrets (also marked with --skip-worktree)
 wireguard-secrets.nix
 
-# Private sandbox reference mounts (machine-specific)
-dotfiles/claude-code/refs.conf
+# refs.conf used to be ignored here, when its entries were absolute host paths.
+# They are relative to $CLAUDE_REFS_ROOT now, so the file is the same on every
+# machine and is tracked and deployed like any other dotfile.
 
 # GitHub tokens for the sandbox (real file lives in ~/.config/claude-code/)
 dotfiles/claude-code/github-tokens

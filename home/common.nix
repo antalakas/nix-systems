@@ -159,12 +159,18 @@
     ".p10k.zsh".source = ../dotfiles/p10k.zsh;
 
     # Claude Code sandbox. Needs nothing but Docker, so it is identical on
-    # every host; the machine-specific parts (GitHub PATs, reference mounts,
-    # profile logins) live outside the nix store — see docs/forge-install.md.
+    # every host; the machine-specific parts (GitHub PATs, profile logins) live
+    # outside the nix store — see docs/forge-install.md.
     ".config/claude-code/Dockerfile".source = ../dotfiles/claude-code/Dockerfile;
     ".local/bin/claude-sandbox" = {
       source = ../dotfiles/claude-code/claude-sandbox;
       executable = true;
     };
+
+    # Reference mounts. Machine-specific until its entries became relative to
+    # $CLAUDE_REFS_ROOT; now the list of repos is shared and only the root is
+    # per-host, so a new machine gets every /ref mount from the rebuild rather
+    # than from retyping eighteen absolute paths.
+    ".config/claude-code/refs.conf".source = ../dotfiles/claude-code/refs.conf;
   };
 }

@@ -26,6 +26,12 @@ in
   # This should match your NixOS version
   home.stateVersion = "24.11";
 
+  # Where claude-sandbox resolves refs.conf's reference mounts from. This host
+  # keeps its repos on the old EndeavourOS partition rather than under $HOME,
+  # which is the only reason refs.conf needs a root at all — forge takes the
+  # default ($HOME/workspace) and sets nothing. See dotfiles/claude-code/refs.conf.
+  home.sessionVariables.CLAUDE_REFS_ROOT = "/mnt/endeavouros/home/andreas/workspace";
+
   # ─────────────────────────────────────────────────────────────
   # User Packages (installed for this user only)
   # ─────────────────────────────────────────────────────────────

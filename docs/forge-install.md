@@ -311,15 +311,18 @@ $EDITOR ~/.config/claude-code/github-tokens
 #   antalakas=github_pat_...
 #   TileDB-Inc=github_pat_...
 
-# Reference mounts — machine-specific, gitignored. Point at forge's paths.
-$EDITOR ~/.config/claude-code/refs.conf
-#   /home/andreas/workspace/tiledb/repos/TileDB-Server:/ref/TileDB-Server
-
 # Profiles, then log in inside each
 mkdir -p ~/.claude-profiles/work/.claude ~/.claude-profiles/personal/.claude
 claude-sandbox                      # work profile;  run /login
 claude-sandbox --profile personal   # personal;      run /login
 ```
+
+Reference mounts need no editing here. `refs.conf` is deployed by home-manager
+and its entries are relative to `$CLAUDE_REFS_ROOT`, which defaults to
+`$HOME/workspace` — forge's actual layout, so it sets nothing. Clone the repos
+you want under that root and they appear at `/ref/<name>` inside the sandbox;
+the startup banner prints the root it used, and warns per entry it could not
+find rather than mounting an empty directory in its place.
 
 Two things differ from the laptop:
 
