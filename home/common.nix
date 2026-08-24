@@ -58,6 +58,13 @@
     # Python dev
     pixi
 
+    # Go dev. delve provides `dlv`, the debug adapter Zed drives for Go
+    # (debugger: start / F4). Keep these two from drifting apart: delve
+    # refuses to attach when it is older than the Go release, so taking both
+    # from this one nixpkgs pin is what keeps the debugger working.
+    go
+    delve
+
     # Node.js (npm, npx)
     nodejs_22
   ];
