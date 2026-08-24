@@ -356,6 +356,15 @@ in
       "com.spotify.Client"
       "com.tutanota.Tutanota"
     ];
+    # Flatpak's own timezone auto-detection only matches /usr/share/zoneinfo
+    # paths; NixOS's /etc/localtime resolves into /nix/store, so it silently
+    # falls back to UTC inside the sandbox and overrides the plain
+    # /etc/localtime bind mount below. Force TZ directly so glibc/ICU/Node
+    # picks it up regardless of what /etc/localtime resolves to in-sandbox.
+    overrides."com.slack.Slack" = {
+      Context.filesystems = [ "/etc/localtime:ro" ];
+      Environment.TZ = "Europe/Athens";
+    };
   };
 
   # Portals. Deliberately no `config` block here: programs.niri already sets
