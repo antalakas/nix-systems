@@ -1,27 +1,11 @@
 { config, pkgs, lib, ... }:
 
-let
-  # Change this to switch Alacritty themes.
-  # Good options from alacritty-theme:
-  # - tokyo_night_storm
-  # - catppuccin_mocha
-  # - kanagawa_wave
-  # - nightfox
-  # - rose_pine
-  # - github_dark
-  # - gruvbox_dark
-  alacrittyTheme = "rose_pine";
-  alacrittyThemes = pkgs.fetchFromGitHub {
-    owner = "alacritty";
-    repo = "alacritty-theme";
-    rev = "02ed0a1826d008885c0cd4589c9eff892773a62a";
-    hash = "sha256-ljTdsfd/bClvnr2DlndEreNuLZ705wo+XSCvkUBVw8Y=";
-  };
-in
 {
   # The CLI toolchain, git, zsh, tmux, direnv, neovim and the Claude Code
   # sandbox come from home/common.nix. What is left here is the desktop.
-  imports = [ ../../home/common.nix ];
+  # home/alacritty.nix carries the terminal config every graphical host shares;
+  # only the theme below is host-specific.
+  imports = [ ../../home/common.nix ../../home/alacritty.nix ];
 
   # This should match your NixOS version
   home.stateVersion = "24.11";
@@ -79,14 +63,6 @@ in
     alias nrb='sudo nixos-rebuild boot --flake /etc/nixos --impure'
     alias nrt='sudo nixos-rebuild test --flake /etc/nixos --impure'
   '';
-
-  # ─────────────────────────────────────────────────────────────
-  # XDG Config Files
-  # ─────────────────────────────────────────────────────────────
-  xdg.configFile = {
-    # Force overwrite Alacritty config (prevent backup collisions)
-    "alacritty/alacritty.toml".force = true;
-  };
 
   # ─────────────────────────────────────────────────────────────
   # Zed
@@ -164,48 +140,9 @@ in
   };
 
   # ─────────────────────────────────────────────────────────────
-  # Alacritty
+  # Alacritty — the rest of the config is in home/alacritty.nix
   # ─────────────────────────────────────────────────────────────
-  programs.alacritty = {
-    enable = true;
-    settings = {
-      general.import = [ "${alacrittyThemes}/themes/${alacrittyTheme}.toml" ];
-      terminal.shell.program = "${pkgs.zsh}/bin/zsh";
-      
-      window = {
-        padding = { x = 12; y = 12; };
-        decorations = "None";
-        opacity = 0.95;
-      };
-      
-      scrolling = {
-        history = 10000;
-        multiplier = 3;
-      };
-      
-      font = {
-        size = 12.0;
-        normal = {
-          family = "Iosevka Nerd Font";
-          style = "Regular";
-        };
-        bold.family = "Iosevka Nerd Font";
-        italic.family = "Iosevka Nerd Font";
-      };
-      
-      cursor = {
-        style = {
-          shape = "Beam";
-          blinking = "On";
-        };
-        blink_interval = 750;
-      };
-      
-      env = {
-        TERM = "xterm-256color";
-      };
-    };
-  };
+  my.alacritty.theme = "rose_pine";
 
   # ─────────────────────────────────────────────────────────────
   # Fuzzel (app launcher)
