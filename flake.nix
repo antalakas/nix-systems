@@ -92,5 +92,32 @@
       ];
       specialArgs = { inherit inputs; };
     };
+
+    # nuc — headless always-on box, same shape as forge and likewise pure.
+    # Neither disko nor sops-nix is wired in: this host has no disko.nix and no
+    # secrets file yet. Add the module here at the same time as the file, not
+    # before. hosts/nuc/hardware-configuration.nix is still a placeholder that
+    # throws, so this output does not evaluate until it is replaced.
+    nixosConfigurations.nuc = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./hosts/nuc
+
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "hm-backup";
+          home-manager.users.andreas = {
+            imports = [
+              nixvim.homeModules.nixvim
+              ./hosts/nuc/home.nix
+            ];
+            programs.nixvim.nixpkgs.source = nixpkgs;
+          };
+        }
+      ];
+      specialArgs = { inherit inputs; };
+    };
   };
 }
