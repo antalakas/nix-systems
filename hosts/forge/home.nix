@@ -57,12 +57,28 @@
     # that does not speak OSC 11 — is left alone, and on interactive so that
     # `ssh forge <cmd>`, scp and rsync do not repaint anything. zshexit
     # restores the background on a clean logout; a dropped connection never
-    # gets to run it, in which case `printf '\033]111\a'` locally undoes it.
+    # gets to run it, which is what the precmd reset in hosts/nixos/home.nix
+    # is for.
     if [[ -o interactive && -n $SSH_CONNECTION ]]; then
       printf '\033]11;#0f2438\a'
       _forge_reset_bg() { printf '\033]111\a'; }
       autoload -Uz add-zsh-hook
       add-zsh-hook zshexit _forge_reset_bg
+
+      # A second, independent cue, for when the first cannot get through: a
+      # multiplexer that does not forward OSC 11, or a terminal that ignores
+      # it, leaves the background exactly as it was. A window title always
+      # arrives, so prefix it and let niri colour the focus ring off that —
+      # see the matching window-rule in dotfiles/niri/config-{home,office}.kdl.
+      #
+      # oh-my-zsh retitles to the bare command line while one runs, which would
+      # drop the prefix and flip the ring back for the length of a build, so
+      # replace its hooks rather than wrap them.
+      DISABLE_AUTO_TITLE=true
+      _forge_title_idle() { print -Pn '\033]0;forge: %~\a'; }
+      _forge_title_cmd() { print -Pn '\033]0;forge: '; print -rn -- "$1"; print -n '\a'; }
+      add-zsh-hook precmd _forge_title_idle
+      add-zsh-hook preexec _forge_title_cmd
     fi
   '';
 }

@@ -373,6 +373,23 @@ window-rule {
     clip-to-geometry true
 }
 
+// Amber focus ring around any terminal whose shell is on forge.
+//
+// forge's zsh prefixes its window title with "forge: " and keeps it there for
+// the whole ssh session (hosts/forge/home.nix), so this matches until you log
+// out. It backs up the background tint that same file sets over OSC 11: a
+// multiplexer or a terminal that ignores OSC leaves the background alone, but
+// a title always arrives.
+//
+// Amber rather than something near forge's own #0f2438 — what this has to be
+// told apart from is the default focus ring above, #7fc8ff, not the background.
+window-rule {
+    match app-id="^Alacritty$" title="^forge: "
+    focus-ring {
+        active-color "#d08050"
+    }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Startup Layout Configuration
 // ─────────────────────────────────────────────────────────────

@@ -62,6 +62,27 @@
     alias nrs='sudo nixos-rebuild switch --flake /etc/nixos --impure'
     alias nrb='sudo nixos-rebuild boot --flake /etc/nixos --impure'
     alias nrt='sudo nixos-rebuild test --flake /etc/nixos --impure'
+
+    # Undo a forge shell's tint. hosts/forge/home.nix repaints this terminal
+    # over OSC 11 for the length of an ssh session and restores it from zshexit,
+    # but a dropped connection never runs that hook and would strand the window
+    # tinted until you reset it by hand.
+    #
+    # A precmd rather than a one-shot at startup, because the shell that ran
+    # `ssh forge` is still alive underneath the connection: when it dies you are
+    # returned to that shell, which never re-sources .zshrc. Its next prompt is
+    # the first local code to run, so that is where the reset belongs. OSC 111
+    # is a no-op when nothing has been tinted, and one write per prompt does not
+    # register.
+    #
+    # Skipped inside tmux, where it would be pointless rather than wrong: a
+    # multiplexer that will not forward the tint out will not forward the reset
+    # either, so neither ever reaches alacritty.
+    if [[ -o interactive && -z $SSH_CONNECTION && -z $TMUX ]]; then
+      autoload -Uz add-zsh-hook
+      _reset_term_bg() { printf '\033]111\a'; }
+      add-zsh-hook precmd _reset_term_bg
+    fi
   '';
 
   # ─────────────────────────────────────────────────────────────
