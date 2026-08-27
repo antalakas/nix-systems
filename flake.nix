@@ -94,14 +94,18 @@
     };
 
     # nuc — headless always-on box, same shape as forge and likewise pure.
-    # Neither disko nor sops-nix is wired in: this host has no disko.nix and no
-    # secrets file yet. Add the module here at the same time as the file, not
-    # before. hosts/nuc/hardware-configuration.nix is still a placeholder that
-    # throws, so this output does not evaluate until it is replaced.
+    # disko and sops-nix are both wired in now that hosts/nuc/disko.nix and
+    # hosts/nuc/secrets.nix exist. secrets/nuc.yaml does not yet: the sops
+    # module below is inert until it does, because hosts/nuc/default.nix only
+    # imports secrets.nix once that file is present.
+    # hosts/nuc/hardware-configuration.nix is still a placeholder that throws,
+    # so this output does not evaluate until it is replaced on the machine.
     nixosConfigurations.nuc = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         ./hosts/nuc
+        inputs.disko.nixosModules.disko
+        inputs.sops-nix.nixosModules.sops
 
         home-manager.nixosModules.home-manager
         {

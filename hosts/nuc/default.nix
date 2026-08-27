@@ -11,19 +11,29 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ./disko.nix
     ../../modules/common.nix
     ../../modules/server.nix
     ../../modules/k8s-dev.nix
+  ]
+  # Same bootstrap order as forge: sops-nix cannot encrypt for this host until
+  # it has an SSH host key, which only exists after the first install. Until
+  # secrets/nuc.yaml is committed, Tailscale is brought up by hand once and
+  # nothing here references a secret. No backup.nix counterpart rides along:
+  # this host has a second disk at /srv like forge does, but no restic units
+  # are set up on it yet.
+  ++ lib.optionals (builtins.pathExists ../../secrets/nuc.yaml) [
+    ./secrets.nix
   ];
 
   networking.hostName = "nuc";
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  # Conservative until this box's ESP size is known: a full /boot fails the
-  # rebuild partway through installing the new entry. forge's 1G ESP affords
-  # 20, the laptop's 256M one affords 10.
-  boot.loader.systemd-boot.configurationLimit = 10;
+  # ./disko.nix fixes the ESP at 1G, so this can match forge rather than the
+  # laptop's 256M cap. Still bounded: a full /boot fails the rebuild partway
+  # through installing the new entry.
+  boot.loader.systemd-boot.configurationLimit = 20;
 
   # No boot.kernelPackages pin on purpose. forge runs linuxPackages_latest
   # only because Arrow Lake-HX is newer than the default kernel knows about;
@@ -62,10 +72,11 @@
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAlPc0tM6OBS5qjtF4OOieQAXa7ki0AD78YK+7i4thkc antalakas@gmail.com"
   ];
 
-  # No secrets.nix/backup.nix pair like forge's. sops-nix cannot encrypt for a
-  # host until it has an SSH host key, which only exists after the first
-  # install; add a nuc entry to .sops.yaml then, and gate the import on
-  # `builtins.pathExists ../../secrets/nuc.yaml` the way hosts/forge does.
+  # ./secrets.nix is written and imported conditionally above. What is still
+  # missing is the encrypted file it points at: after the first install, derive
+  # this host's age key with `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`,
+  # add it to .sops.yaml, and create secrets/nuc.yaml. Until then the import
+  # does not fire and nothing here needs a secret.
 
   # The release this host was first installed from. Set once, at install, and
   # left alone: it pins compatibility defaults for stateful services, so moving
