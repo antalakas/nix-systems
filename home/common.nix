@@ -126,8 +126,13 @@
       [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
       # Aliases
-      alias ls='eza --icons'
-      alias ll='eza -la --icons'
+      # --icons=auto, not a bare --icons: the flag takes an OPTIONAL value, so
+      # `ls somefile` has eza consume the filename as that value and fail with
+      # "invalid value 'somefile' for '--icons [<WHEN>]'". Pinning the value
+      # frees the positional argument. `auto` keeps the current behaviour —
+      # icons when stdout is a terminal, none when piped.
+      alias ls='eza --icons=auto'
+      alias ll='eza -la --icons=auto'
       alias cat='bat'
       alias lg='lazygit'
       alias ld='lazydocker'
