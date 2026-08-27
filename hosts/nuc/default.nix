@@ -59,10 +59,25 @@
   # the SSD.
   zramSwap.enable = true;
 
-  # Nothing here sets virtualisation.docker.daemon.settings or the tmpfiles
-  # NOCOW rule that forge needs: both exist because forge puts /var/lib/docker
-  # on its own btrfs subvolume. Revisit if this host ends up on btrfs too —
-  # see the storage-driver comment in hosts/forge/default.nix.
+  # This host did end up on btrfs with /var/lib/docker on its own subvolume
+  # (./disko.nix), which is the condition the two settings below exist for.
+  # They are forge's, verbatim; the reasoning is spelled out at length in
+  # hosts/forge/default.nix.
+  #
+  # overlay2 is named explicitly because docker would otherwise pick its btrfs
+  # driver on a btrfs filesystem, which is the less-travelled path.
+  virtualisation.docker.daemon.settings = {
+    storage-driver = "overlay2";
+  };
+
+  # This, not the `nodatacow` in disko.nix, is what actually disables COW for
+  # container layers: btrfs applies most mount options per filesystem rather
+  # than per subvolume, so /var/lib/docker inherits the `compress=zstd` that /
+  # was mounted with. tmpfiles runs well before docker.service, so on a fresh
+  # install the subvolume is still empty when this lands and everything docker
+  # writes inherits NOCOW. It only affects new files, so it cannot repair a
+  # subvolume that already has data.
+  systemd.tmpfiles.rules = [ "h /var/lib/docker - - - - +C" ];
 
   # The LAN way in, for the day Tailscale is the thing that broke. Tailscale
   # SSH (modules/server.nix) authenticates against tailnet ACLs and ignores
