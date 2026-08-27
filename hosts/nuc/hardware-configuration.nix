@@ -15,7 +15,18 @@ throw ''
 
   On the nuc — from the installer, or from the running system:
 
-      nixos-generate-config --show-hardware-config
+      sudo nixos-generate-config --no-filesystems --show-hardware-config \
+        > hosts/nuc/hardware-configuration.nix
+
+  --no-filesystems because ./disko.nix already declares every filesystem, and
+  a second set of definitions collides with it.
+
+  Do this BEFORE running disko, which is the opposite of the order in
+  docs/forge-install.md (§3 partitions, §4 scans). That order cannot work on a
+  host whose scan is still this file: `disko --mode ... --flake .#nuc` has to
+  evaluate nixosConfigurations.nuc to reach disko.devices, evaluating it
+  imports this file, and importing it lands you here. Writing the scan first
+  breaks the cycle, and --show-hardware-config needs nothing mounted to run.
 
   Replace this file with that output, then check it before switching:
 
