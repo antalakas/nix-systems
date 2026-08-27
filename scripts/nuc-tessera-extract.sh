@@ -75,7 +75,12 @@ while IFS= read -r u; do grab "$u" units; done \
 } > "$STAGE/reference/host-snapshot.txt" 2>&1
 echo "  ok      host-snapshot.txt"
 
-sudo find "$STAGE" -type f -exec sha256sum {} \; | sed "s|$STAGE/||" > "$STAGE/MANIFEST.sha256"
+# -not -name MANIFEST.sha256 because the redirect creates the file before find
+# walks the tree: without it, find hashes the manifest while it is still empty
+# and the manifest ends up containing a line about itself that can never
+# verify. Paths are relative so `sha256sum -c` works from the extract root.
+sudo find "$STAGE" -type f -not -name MANIFEST.sha256 -exec sha256sum {} \; \
+  | sed "s|$STAGE/||" > "$STAGE/MANIFEST.sha256"
 sudo chown -R "$USER" "$STAGE"
 
 echo
