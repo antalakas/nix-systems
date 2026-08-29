@@ -366,9 +366,9 @@ ssh-keygen -R 192.168.1.x      # drops every key type for that address, keeps a 
 ssh andreas@192.168.1.x        # accept the fingerprint you just verified
 ```
 
-Connecting later by tailnet name prompts once more, because `known_hosts` is
-keyed on the name rather than the machine. It should offer the same fingerprint;
-the day it does not is the day to stop and look.
+Connecting later by *tailnet* name hits this a second time, and harder — the
+Ubuntu box answered to that name too, so it is a hard failure rather than a
+prompt. That is covered below, once there is a tailnet to connect over.
 
 ### Delete the old tailnet device before enrolling
 
@@ -416,6 +416,47 @@ exist, so `hosts/nuc/default.nix` has not imported `secrets.nix` and nothing in
 the config references a secret. This one manual `tailscale up` is what the
 bootstrap ordering costs, and [§7](#7-move-secrets-under-sops) is what stops it
 recurring on the next install.
+
+### Reaching it by name afterwards
+
+Two things get between you and `ssh andreas@nuc` from the laptop, and neither is
+a prompt you can click past.
+
+The first is `known_hosts`, again. It is keyed on the name rather than the
+machine, and the Ubuntu box answered to this same tailnet name — so the first
+connection does not ask, it fails outright with `REMOTE HOST IDENTIFICATION HAS
+CHANGED!` and an offending line number. Same cause as the LAN address earlier,
+same fix, and the fingerprint it reports should be the one you verified at the
+console:
+
+```bash
+# laptop
+ssh-keygen -R nuc.taile6c0b.ts.net
+ssh-keygen -R 100.91.219.77        # the old node's tailnet address, while you are here
+ssh andreas@nuc.taile6c0b.ts.net   # accept the fingerprint you verified
+```
+
+The second is that the *short* name may never reach the tailnet at all. The
+router answers `nuc` out of its own DHCP records before MagicDNS is consulted,
+and those records outlive the machine that created them — here it returned a
+stale LAN address, and ssh died with `No route to host` against nothing at all.
+Ask which resolver answered:
+
+```bash
+resolvectl query nuc
+```
+
+An alias settles both, and sidesteps the router's view entirely:
+
+```
+# ~/.ssh/config on the laptop
+Host nuc
+  HostName nuc.taile6c0b.ts.net
+  User andreas
+```
+
+The DHCP reservation in [§9](#9-aftercare) is still worth having, but it repairs
+the LAN path rather than this one.
 
 While you are there:
 
