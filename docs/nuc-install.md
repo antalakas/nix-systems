@@ -501,15 +501,47 @@ of them genuinely is.
 ```bash
 findmnt -t btrfs -o TARGET,SOURCE,OPTIONS
 docker info | grep -i "storage driver"     # overlay2, not btrfs
-lsattr -d /var/lib/docker                  # ---------------C------
+nix shell nixpkgs#e2fsprogs -c lsattr -d /var/lib/docker   # ---------------C------
 sudo btrfs subvolume list /
 ```
+
+`lsattr` has to be fetched because `e2fsprogs` is in no host's closure in this
+flake — nothing here is ext4, so nothing pulls it in. It is on `PATH` in
+[§4](#4-partition-and-mount) only because the installer ISO carries it, which is
+why that section can call it bare and this one cannot. Same shape as the
+`nix shell nixpkgs#gnupg` in [§0](#0-before-anything-destructive), and the same
+argument applies: add `e2fsprogs` to `home/common.nix` if you ever want `chattr`
+on a running host rather than once during an install.
+
+That reports `Permission denied While reading flags on /var/lib/docker`, because
+the directory is mode 0710 and you are `andreas`. It needs root, and getting
+root and a fetched binary into the same command takes some care:
+
+```bash
+nix shell nixpkgs#e2fsprogs -c sh -c \
+  'sudo "$(command -v lsattr)" -d /var/lib/docker'
+```
+
+Resolving `lsattr` inside the shell and handing `sudo` the absolute result is
+what makes this reliable. Two things it sidesteps: plain `sudo lsattr` depends
+on how sudo treats `PATH`, and the binary is not in the system profile anyway;
+and `sudo $(nix build --print-out-paths nixpkgs#e2fsprogs)/bin/lsattr` — the
+obvious move — is broken, because `e2fsprogs` is a multi-output derivation. That
+prints five store paths, word splitting turns them into five arguments, and sudo
+tries to execute the first one, a directory, reporting `command not found`.
 
 `overlay2` is named explicitly in `hosts/nuc/default.nix` because docker would
 otherwise pick its btrfs driver on a btrfs filesystem, which is the
 less-travelled path. The `+C` comes from the tmpfiles rule, which runs well
-before `docker.service` — and only governs files created after it, so if it
-somehow reads clear here, fix it before pulling images rather than after.
+before `docker.service`, and only governs files created after it.
+
+That last clause is why the `chattr +C` in [§4](#4-partition-and-mount) is not
+redundant with the tmpfiles rule, and why this check does not keep until later:
+`modules/k8s-dev.nix` declares `kind-registry` under
+`virtualisation.oci-containers`, so docker pulls `registry:2` unprompted on the
+first boot. The subvolume already has data by the time you read this. If `+C` is
+clear here, repairing it means moving that data rather than setting an
+attribute.
 
 ## 9. Aftercare
 
