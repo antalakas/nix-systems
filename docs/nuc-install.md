@@ -370,6 +370,39 @@ Connecting later by tailnet name prompts once more, because `known_hosts` is
 keyed on the name rather than the machine. It should offer the same fingerprint;
 the day it does not is the day to stop and look.
 
+### Delete the old tailnet device before enrolling
+
+This host has been on the tailnet before, under Ubuntu, and that device is still
+registered — offline, and still holding the name. Tailscale will not hand the
+same MagicDNS name to two machines, so enrolling on top of it yields `nuc-1` and
+leaves `nuc` pointing at something that no longer exists. Nothing fails at the
+time. You find out later, when `ssh andreas@nuc` hangs against a dead address,
+and every instruction from [§7](#7-move-secrets-under-sops) onwards assumes the
+plain name.
+
+Check from the laptop, then remove it in the admin console — Machines → the
+offline `nuc` → Remove:
+
+```bash
+# laptop
+tailscale status | grep -i nuc      # an offline `nuc` here is the Ubuntu one
+getent hosts nuc                    # still resolves, to the OLD tailnet address
+```
+
+There is no CLI for deleting a device, so the console is unavoidable. Then, once
+`tailscale up` has run, confirm the name it actually got — which is the whole
+point of having removed the old one first:
+
+```bash
+# nuc
+tailscale status | head -3          # must say `nuc`, not `nuc-1`
+```
+
+This is not only a migration problem. Every reinstall enrols as a *new* device
+and leaves the previous entry behind, so the same collision waits on the next
+one — which puts it on the same redo list as disabling key expiry in
+[§9](#9-aftercare).
+
 Doing it over SSH rather than at the console matters for a practical reason: on
 a headless box there is no browser for the login URL `tailscale up` prints, and
 run this way the URL arrives in a terminal you can copy from. Typing it out from
