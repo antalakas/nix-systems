@@ -22,13 +22,14 @@ This documents the complete setup process for this NixOS system.
 
 ## Key Configuration Files
 
-This flake builds two hosts: `nixos` (this laptop) and `forge` (a headless dev
-box — see `docs/forge-install.md`). Anything both hosts need lives in
-`modules/` or `home/`; anything one host needs lives under `hosts/<name>/`.
+This flake builds three hosts: `nixos` (this laptop), `forge` (a headless dev
+box — see `docs/forge-install.md`) and `nuc` (a headless always-on box — see
+`docs/nuc-install.md`). Anything more than one host needs lives in `modules/` or
+`home/`; anything one host needs lives under `hosts/<name>/`.
 
 | File | Purpose |
 |------|---------|
-| `flake.nix` | Flake entry point, Home Manager integration, both hosts |
+| `flake.nix` | Flake entry point, Home Manager integration, all three hosts |
 | `modules/common.nix` | System config shared by every host |
 | `modules/server.nix` | Headless profile (sshd, Tailscale SSH, kind sysctls) |
 | `modules/k8s-dev.nix` | kind, local registry, k3s (off by default) |
@@ -37,7 +38,8 @@ box — see `docs/forge-install.md`). Anything both hosts need lives in
 | `hosts/nixos/niri.nix` | Niri/Wayland specific settings |
 | `hosts/nixos/hardware-configuration.nix` | Hardware-specific (auto-generated) |
 | `hosts/nixos/home.nix` | This laptop's desktop user config |
-| `hosts/forge/` | The headless box: config, disko layout, sops wiring |
+| `hosts/forge/` | The headless dev box: config, disko layout, sops wiring |
+| `hosts/nuc/` | The headless always-on box: same shape as `forge` |
 | `wireguard-secrets.nix` | WireGuard VPN config (tracked, skip-worktree) |
 | `dotfiles/` | Actual dotfile contents managed by Home Manager |
 | `templates/` | Flake templates for new projects |
