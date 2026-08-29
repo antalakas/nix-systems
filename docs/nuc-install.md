@@ -619,8 +619,8 @@ attribute.
 
 ## 9. Aftercare
 
-The things nothing reminds you about. All of these are forge's, and all of them
-are per-host.
+The things nothing reminds you about, all of them per-host. All are forge's
+except the `/etc/nixos` ownership, which deliberately departs from it.
 
 - **Disable the node key expiry.** Tailscale admin console → Machines → nuc →
   Disable key expiry. Two clocks are easily conflated: the auth key's 90 days
@@ -638,6 +638,30 @@ are per-host.
   is what you will want on the day Tailscale is the thing that broke, together
   with the laptop key already in
   `users.users.andreas.openssh.authorizedKeys.keys`.
+- **Chown `/etc/nixos` to `andreas`**, so git here needs no `sudo`. This is the
+  one place this host departs from forge, which keeps the tree root-owned and
+  reaches for `sudo git` every time.
+
+  ```bash
+  sudo chown -R andreas:users /etc/nixos
+  ```
+
+  `users` is the default primary group for an `isNormalUser` declared without an
+  explicit `group`, which is what `modules/common.nix` does. Do not substitute
+  git's own suggestion of a `safe.directory` exception: that silences the
+  ownership check while leaving the files root-owned, so the next `pull` fails on
+  write permission instead — forge's "Git in /etc/nixos needs sudo" has the long
+  version, and it is still correct about that.
+
+  What you are giving up is the property that argument rests on: with the tree
+  yours, every process running as you can write what root then builds into the
+  system. That is a narrower loss here than it would be on forge, which hosts the
+  Claude Code sandbox — this box runs your shells and `kind-registry`. Worth
+  revisiting the day a sandbox, or a container with a home mount, lands on it.
+
+  On the redo list, because [§5](#5-install) clones `/etc/nixos` as root and a
+  reinstall puts the ownership straight back. `nixos-rebuild` still needs `sudo`
+  either way; that is a separate thing and does not change.
 - **Wake-on-LAN**, if this box ever stops being always-on. `hosts/nuc/default.nix`
   deliberately has none: it is the one setting that must name an interface and a
   MAC, and neither is knowable off the machine. Now it can tell you —
