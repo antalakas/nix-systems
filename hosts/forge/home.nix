@@ -3,7 +3,10 @@
 { config, pkgs, lib, ... }:
 
 {
-  imports = [ ../../home/common.nix ];
+  imports = [
+    ../../home/common.nix
+    ../../home/ssh-tint.nix
+  ];
 
   home.stateVersion = "26.11";
 
@@ -41,44 +44,15 @@
     alias nrs='sudo nixos-rebuild switch --flake /etc/nixos#forge'
     alias nrb='sudo nixos-rebuild boot --flake /etc/nixos#forge'
     alias nrt='sudo nixos-rebuild test --flake /etc/nixos#forge'
-
-    # Tint the client's terminal for the length of an ssh session, so a forge
-    # shell is visibly not a laptop one. This box is headless — it does not
-    # import home/alacritty.nix and never runs a terminal — so the only thing
-    # that can change what you see is the terminal at the far end, repainted
-    # with OSC 11 (set background) and OSC 111 (reset to the theme's own).
-    #
-    # The colour is deliberately not tokyo_night's #1a1b26: that is within a
-    # few points of the laptop's rose_pine #191724 and the two would look
-    # identical, which defeats the point. It is a raw value, not a theme name,
-    # so change it here rather than in home/alacritty.nix.
-    #
-    # Guarded on SSH_CONNECTION so this host's physical console — a Linux VT
-    # that does not speak OSC 11 — is left alone, and on interactive so that
-    # `ssh forge <cmd>`, scp and rsync do not repaint anything. zshexit
-    # restores the background on a clean logout; a dropped connection never
-    # gets to run it, which is what the precmd reset in hosts/nixos/home.nix
-    # is for.
-    if [[ -o interactive && -n $SSH_CONNECTION ]]; then
-      printf '\033]11;#0f2438\a'
-      _forge_reset_bg() { printf '\033]111\a'; }
-      autoload -Uz add-zsh-hook
-      add-zsh-hook zshexit _forge_reset_bg
-
-      # A second, independent cue, for when the first cannot get through: a
-      # multiplexer that does not forward OSC 11, or a terminal that ignores
-      # it, leaves the background exactly as it was. A window title always
-      # arrives, so prefix it and let niri colour the focus ring off that —
-      # see the matching window-rule in dotfiles/niri/config-{home,office}.kdl.
-      #
-      # oh-my-zsh retitles to the bare command line while one runs, which would
-      # drop the prefix and flip the ring back for the length of a build, so
-      # replace its hooks rather than wrap them.
-      DISABLE_AUTO_TITLE=true
-      _forge_title_idle() { print -Pn '\033]0;forge: %~\a'; }
-      _forge_title_cmd() { print -Pn '\033]0;forge: '; print -rn -- "$1"; print -n '\a'; }
-      add-zsh-hook precmd _forge_title_idle
-      add-zsh-hook preexec _forge_title_cmd
-    fi
   '';
+
+  # Client-terminal tint and title prefix; the mechanism is in
+  # home/ssh-tint.nix. Blue, and deliberately not tokyo_night's #1a1b26 — that
+  # is within a few points of the laptop's rose_pine #191724 and the two would
+  # look identical, which defeats the point.
+  my.sshTint = {
+    enable = true;
+    label = "forge";
+    background = "#0f2438";
+  };
 }

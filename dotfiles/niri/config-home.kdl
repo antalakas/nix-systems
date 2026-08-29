@@ -361,8 +361,8 @@ window-rule {
 // Amber focus ring around any terminal whose shell is on forge.
 //
 // forge's zsh prefixes its window title with "forge: " and keeps it there for
-// the whole ssh session (hosts/forge/home.nix), so this matches until you log
-// out. It backs up the background tint that same file sets over OSC 11: a
+// the whole ssh session (home/ssh-tint.nix, switched on from
+// hosts/forge/home.nix), so this matches until you log out. It backs up the background tint that same file sets over OSC 11: a
 // multiplexer or a terminal that ignores OSC leaves the background alone, but
 // a title always arrives.
 //
@@ -376,8 +376,8 @@ window-rule {
 }
 
 // Violet focus ring around any terminal whose shell is on nuc. Same mechanism
-// as the rule above — hosts/nuc/home.nix prefixes the title with "nuc: " for
-// the whole ssh session — so only the pattern and the colour differ.
+// as the rule above — home/ssh-tint.nix prefixes the title with "nuc: " for the
+// whole ssh session — so only the pattern and the colour differ.
 //
 // Violet because this now has to be distinguishable from two things rather than
 // one: the default ring #7fc8ff and forge's amber. The two hosts tint their
