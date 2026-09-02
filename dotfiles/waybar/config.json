@@ -1,8 +1,8 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 30,
-    "spacing": 4,
+    "height": 32,
+    "spacing": 0,
     "modules-left": ["custom/niri-workspaces"],
     "modules-center": ["clock", "custom/calendar", "custom/prs", "custom/linear"],
     "modules-right": ["idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "battery", "tray"],
@@ -29,7 +29,7 @@
     },
     
     "clock": {
-        "format": "{:%Y-%m-%d %H:%M}",
+        "format": "{:%a %d %b  %H:%M}",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%A, %B %d, %Y (%R)}"
     },

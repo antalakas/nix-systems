@@ -1,3 +1,19 @@
+/* One calm bar. A translucent dark strip, the three module groups as soft
+   pills, light text, and colour only where it carries meaning: an event
+   about to start, a review waiting for you, a battery running down. The
+   accent is the same blue as niri's focus ring and fuzzel's match colour,
+   so the bar, the launcher and the compositor read as one system.
+
+   Palette
+     bar      rgba(43, 48, 59, .92)   same base as fuzzel
+     text     #e0def4                 primary
+     dim      #908caa                 secondary, offline, muted
+     accent   #7fc8ff                 workspaces, your reviews
+     amber    #f6c177                 soon, warning, idle inhibitor on
+     green    #9ece6a                 running, charging
+     red      #eb6f92                 critical, disconnected
+     violet   #c4a7e7                 project updates */
+
 * {
     border: none;
     border-radius: 0;
@@ -9,9 +25,8 @@
 }
 
 window#waybar {
-    background-color: rgba(43, 48, 59, 0.9);
-    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
-    color: #ffffff;
+    background-color: rgba(43, 48, 59, 0.92);
+    color: #e0def4;
     transition-property: background-color;
     transition-duration: .5s;
 }
@@ -20,93 +35,85 @@ window#waybar.hidden {
     opacity: 0.2;
 }
 
-button {
-    box-shadow: inset 0 -3px transparent;
-    border: none;
-    border-radius: 0;
+/* ── Groups ──────────────────────────────────────────────────────────── */
+
+.modules-left,
+.modules-center,
+.modules-right {
+    background-color: rgba(224, 222, 244, 0.06);
+    border-radius: 8px;
+    margin: 4px 8px;
+    padding: 0 4px;
 }
 
-button:hover {
-    background: inherit;
-    box-shadow: inset 0 -3px #ffffff;
-}
-
-#custom-niri-workspaces {
-    padding: 0 10px;
-    margin: 2px 2px;
-    border-radius: 4px;
-    background-color: #64727D;
-    color: #ffffff;
-}
-
-#custom-niri-workspaces:hover {
-    background-color: #7f8c8d;
-}
-
-#mode {
-    background-color: #64727D;
-    border-bottom: 3px solid #ffffff;
-}
-
+/* Every module: text on the pill, no box of its own. */
+#custom-niri-workspaces,
 #clock,
 #custom-calendar,
 #custom-prs,
 #custom-linear,
-#battery,
+#idle_inhibitor,
+#pulseaudio,
+#network,
 #cpu,
 #memory,
 #temperature,
-#idle_inhibitor,
-#network,
-#pulseaudio,
+#battery,
 #tray,
 #mode {
     padding: 0 10px;
-    margin: 2px 2px;
-    border-radius: 4px;
-    color: #ffffff;
+    margin: 0;
+    color: #e0def4;
 }
 
-#window,
-#workspaces {
-    margin: 0 4px;
+/* Hairline between neighbours in the right-hand group. */
+.modules-right > widget > * {
+    border-left: 1px solid rgba(224, 222, 244, 0.10);
 }
 
-.modules-left > widget:first-child > #workspaces {
-    margin-left: 0;
+.modules-right > widget:first-child > * {
+    border-left: none;
 }
 
-.modules-right > widget:last-child > #workspaces {
-    margin-right: 0;
+/* Clickable modules answer the pointer. */
+#custom-niri-workspaces:hover,
+#clock:hover,
+#custom-calendar:hover,
+#custom-prs:hover,
+#custom-linear:hover,
+#idle_inhibitor:hover,
+#pulseaudio:hover,
+#battery:hover {
+    background-color: rgba(224, 222, 244, 0.08);
+    border-radius: 6px;
 }
+
+/* ── Left: workspaces ────────────────────────────────────────────────── */
+
+#custom-niri-workspaces {
+    color: #7fc8ff;
+    font-weight: bold;
+}
+
+/* ── Centre: clock, calendar, pull requests, Linear ──────────────────── */
 
 #clock {
-    background-color: #64727D;
+    font-weight: bold;
 }
 
-#custom-calendar {
-    background-color: #64727D;
-}
-
-/* Next event starts within ten minutes (see calendar.sh) */
+/* Next event starts within ten minutes (calendar.sh) */
 #custom-calendar.soon {
-    background-color: #e67e22;
-    color: #000000;
+    color: #f6c177;
+    font-weight: bold;
 }
 
 /* An event is running */
 #custom-calendar.now {
-    background-color: #26A65B;
+    color: #9ece6a;
 }
 
-/* Pull requests and Linear (prs.sh, linear.sh). Bold while something is
-   unseen; a colour when there is something to act on; dimmed when the last
-   fetch failed and the numbers are from the cache. */
-#custom-prs,
-#custom-linear {
-    background-color: #64727D;
-}
-
+/* Bold while something is unseen; a colour when there is something to act
+   on; dimmed when the numbers are from the cache (prs.sh, linear.sh). */
 #custom-prs.unseen,
 #custom-linear.unseen {
     font-weight: bold;
@@ -114,99 +121,67 @@ button:hover {
 
 /* A review is requested from you */
 #custom-prs.review {
-    background-color: #3498db;
+    color: #7fc8ff;
 }
 
 /* A project update was posted */
 #custom-linear.update {
-    background-color: #8e44ad;
+    color: #c4a7e7;
 }
 
 #custom-prs.stale,
 #custom-prs.error,
 #custom-linear.stale,
 #custom-linear.error {
-    color: #bbbbbb;
+    color: #908caa;
     font-style: italic;
 }
 
-#battery {
-    background-color: #ffffff;
-    color: #000000;
+/* ── Right: system ───────────────────────────────────────────────────── */
+
+#idle_inhibitor.activated {
+    color: #f6c177;
 }
 
-#battery.charging, #battery.plugged {
-    color: #ffffff;
-    background-color: #26A65B;
+#pulseaudio.muted {
+    color: #908caa;
+}
+
+#network.disconnected {
+    color: #eb6f92;
+}
+
+#temperature.critical {
+    color: #eb6f92;
+}
+
+#battery.charging,
+#battery.plugged {
+    color: #9ece6a;
+}
+
+#battery.warning:not(.charging) {
+    color: #f6c177;
 }
 
 @keyframes blink {
     to {
-        background-color: #ffffff;
-        color: #000000;
+        color: #908caa;
     }
 }
 
 #battery.critical:not(.charging) {
-    background-color: #f53c3c;
-    color: #ffffff;
+    color: #eb6f92;
+    font-weight: bold;
     animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: linear;
+    animation-duration: 0.8s;
+    animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
     animation-direction: alternate;
 }
 
-label:focus {
-    background-color: #000000;
-}
-
-#cpu {
-    background-color: #2ecc71;
-    color: #000000;
-}
-
-#memory {
-    background-color: #9b59b6;
-}
-
-#temperature {
-    background-color: #f39c12;
-}
-
-#temperature.critical {
-    background-color: #eb4d4b;
-}
-
-#idle_inhibitor {
-    background-color: #2d3436;
-}
-
-#idle_inhibitor.activated {
-    background-color: #ecf0f1;
-    color: #2d3436;
-}
-
-#network {
-    background-color: #2980b9;
-}
-
-#network.disconnected {
-    background-color: #f53c3c;
-}
-
-#pulseaudio {
-    background-color: #f1c40f;
-    color: #000000;
-}
-
-#pulseaudio.muted {
-    background-color: #90b1b1;
-    color: #2a5c45;
-}
-
 #tray {
-    background-color: #2980b9;
+    padding-right: 6px;
 }
 
 #tray > .passive {
@@ -215,6 +190,17 @@ label:focus {
 
 #tray > .needs-attention {
     -gtk-icon-effect: highlight;
-    background-color: #eb4d4b;
 }
 
+/* ── Tooltips ────────────────────────────────────────────────────────── */
+
+tooltip {
+    background-color: rgba(43, 48, 59, 0.98);
+    border: 1px solid rgba(224, 222, 244, 0.14);
+    border-radius: 8px;
+}
+
+tooltip label {
+    color: #e0def4;
+    padding: 6px 8px;
+}
