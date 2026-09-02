@@ -337,6 +337,17 @@
       source = ../../dotfiles/waybar/calendar.sh;
       executable = true;
     };
+    # Pull requests and Linear activity. No nix module behind these: gh, curl,
+    # jq and fuzzel are already here, and the two secrets are `gh auth login`
+    # and ~/.config/linear/api-key, both by hand — see docs/work-bar.md.
+    ".config/waybar/prs.sh" = {
+      source = ../../dotfiles/waybar/prs.sh;
+      executable = true;
+    };
+    ".config/waybar/linear.sh" = {
+      source = ../../dotfiles/waybar/linear.sh;
+      executable = true;
+    };
   };
   
   # Refresh font cache after installing Pragmasevka

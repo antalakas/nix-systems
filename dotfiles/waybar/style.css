@@ -50,6 +50,8 @@ button:hover {
 
 #clock,
 #custom-calendar,
+#custom-prs,
+#custom-linear,
 #battery,
 #cpu,
 #memory,
@@ -95,6 +97,37 @@ button:hover {
 /* An event is running */
 #custom-calendar.now {
     background-color: #26A65B;
+}
+
+/* Pull requests and Linear (prs.sh, linear.sh). Bold while something is
+   unseen; a colour when there is something to act on; dimmed when the last
+   fetch failed and the numbers are from the cache. */
+#custom-prs,
+#custom-linear {
+    background-color: #64727D;
+}
+
+#custom-prs.unseen,
+#custom-linear.unseen {
+    font-weight: bold;
+}
+
+/* A review is requested from you */
+#custom-prs.review {
+    background-color: #3498db;
+}
+
+/* A project update was posted */
+#custom-linear.update {
+    background-color: #8e44ad;
+}
+
+#custom-prs.stale,
+#custom-prs.error,
+#custom-linear.stale,
+#custom-linear.error {
+    color: #bbbbbb;
+    font-style: italic;
 }
 
 #battery {

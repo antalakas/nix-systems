@@ -66,10 +66,12 @@ box — see `docs/forge-install.md`) and `nuc` (a headless always-on box — see
 - Waybar autostart with delay
 
 **`~/.config/waybar/config.json`** - Waybar configuration:
-- Modules: niri-workspaces, clock, calendar, pulseaudio, network, cpu, memory, battery, tray
+- Modules: niri-workspaces, clock, calendar, prs, linear, pulseaudio, network, cpu, memory, battery, tray
 - Uses custom `niri-workspaces.sh` script
 - `calendar.sh` shows the next Google Calendar event, via khal + vdirsyncer
   (home/calendar.nix, setup in docs/google-calendar.md)
+- `prs.sh` and `linear.sh` show open tile-ai pull requests and ENG-team
+  Linear activity since you last looked (docs/work-bar.md)
 
 **`~/.config/waybar/niri-workspaces.sh`** - Workspace indicator:
 ```bash
