@@ -49,6 +49,7 @@ button:hover {
 }
 
 #clock,
+#custom-calendar,
 #battery,
 #cpu,
 #memory,
@@ -79,6 +80,21 @@ button:hover {
 
 #clock {
     background-color: #64727D;
+}
+
+#custom-calendar {
+    background-color: #64727D;
+}
+
+/* Next event starts within ten minutes (see calendar.sh) */
+#custom-calendar.soon {
+    background-color: #e67e22;
+    color: #000000;
+}
+
+/* An event is running */
+#custom-calendar.now {
+    background-color: #26A65B;
 }
 
 #battery {

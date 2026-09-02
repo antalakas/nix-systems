@@ -4,8 +4,10 @@
   # The CLI toolchain, git, zsh, tmux, direnv, neovim and the Claude Code
   # sandbox come from home/common.nix. What is left here is the desktop.
   # home/alacritty.nix carries the terminal config every graphical host shares;
-  # only the theme below is host-specific.
-  imports = [ ../../home/common.nix ../../home/alacritty.nix ];
+  # only the theme below is host-specific. home/calendar.nix is the Google
+  # calendar behind the bar's calendar module — khal, vdirsyncer and the sync
+  # timer; the OAuth login it needs is a one-off by hand (docs/google-calendar.md).
+  imports = [ ../../home/common.nix ../../home/alacritty.nix ../../home/calendar.nix ];
 
   # This should match your NixOS version
   home.stateVersion = "24.11";
@@ -329,6 +331,10 @@
     ".config/waybar/style.css".source = ../../dotfiles/waybar/style.css;
     ".config/waybar/niri-workspaces.sh" = {
       source = ../../dotfiles/waybar/niri-workspaces.sh;
+      executable = true;
+    };
+    ".config/waybar/calendar.sh" = {
+      source = ../../dotfiles/waybar/calendar.sh;
       executable = true;
     };
   };

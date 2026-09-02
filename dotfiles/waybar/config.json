@@ -4,7 +4,7 @@
     "height": 30,
     "spacing": 4,
     "modules-left": ["custom/niri-workspaces"],
-    "modules-center": ["clock"],
+    "modules-center": ["clock", "custom/calendar"],
     "modules-right": ["idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "battery", "tray"],
     
     "custom/niri-workspaces": {
@@ -32,6 +32,16 @@
         "format": "{:%Y-%m-%d %H:%M}",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%A, %B %d, %Y (%R)}"
+    },
+
+    "custom/calendar": {
+        "exec": "/home/andreas/.config/waybar/calendar.sh",
+        "return-type": "json",
+        "interval": 60,
+        "format": "{}",
+        "max-length": 48,
+        "on-click": "alacritty -e ikhal",
+        "on-click-right": "xdg-open https://calendar.google.com"
     },
     
     "cpu": {
