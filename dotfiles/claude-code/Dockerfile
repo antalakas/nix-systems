@@ -68,7 +68,7 @@ RUN set -eux; \
     pg_dropcluster --stop "${PG_MAJOR}" main || true; \
     rm -rf /var/lib/apt/lists/*
 
-ARG CLAUDE_CODE_VERSION=2.1.220
+ARG CLAUDE_CODE_VERSION=2.1.258
 
 RUN python3 -m venv /opt/mempalace \
     && /opt/mempalace/bin/pip install --no-cache-dir --upgrade pip \
