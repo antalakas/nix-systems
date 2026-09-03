@@ -310,9 +310,10 @@
   home.file = {
     # The Powerlevel10k config moved to home/common.nix, so forge gets it too.
 
-    # Niri profiles (both available, switch with niri-profile command)
+    # Niri profiles (all available, switch with niri-profile command)
     ".config/niri/config-home.kdl".source = ../../dotfiles/niri/config-home.kdl;
     ".config/niri/config-office.kdl".source = ../../dotfiles/niri/config-office.kdl;
+    ".config/niri/config-igo.kdl".source = ../../dotfiles/niri/config-igo.kdl;
 
     # Niri profile switcher
     ".local/bin/niri-profile" = {
