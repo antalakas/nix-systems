@@ -24,20 +24,20 @@ let
   # by-id, never /dev/nvme0n1 — enumeration order is not stable across boots,
   # and getting it wrong here formats the wrong disk.
   #
-  # REPLACE_ME, unlike hosts/nuc/disko.nix, whose IDs were read off the machine
-  # while it still ran its old OS. Nothing here has been read off this laptop
-  # yet. From the installer:
+  # Read off this machine during its install rather than from an older OS, as
+  # nuc's were. To read it again — a disk swap, or a second machine — boot the
+  # installer and run:
   #
   #   ls -l /dev/disk/by-id/ | grep -v part
   #
-  # and take the `nvme-<model>_<serial>` form — readable, and stable across the
+  # taking the `nvme-<model>_<serial>` form: readable, and stable across the
   # `nvme-eui.*` and `..._1` duplicate aliases the kernel also exposes.
   #
   # If nothing NVMe appears at all, the disk is not missing: the 9310 ships
   # with BIOS `SATA Operation` set to RAID/Intel RST, under which the Linux
   # NVMe driver cannot see the drive. Switch it to AHCI. See
   # docs/scribe-install.md §1.
-  mainDisk = "/dev/disk/by-id/REPLACE_ME";
+  mainDisk = "/dev/disk/by-id/nvme-PC_SN730_NVMe_WDC_1024GB_2041C7801763";
 in
 {
   disko.devices.disk.main = {
