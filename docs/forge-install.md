@@ -365,13 +365,28 @@ To bring up k3s alongside, set `services.k3s.enable = true` in
 
 ## 10. Zed remote
 
-Add forge as a remote in Zed on the laptop; it connects over SSH. The nix-built
-remote server is already at `~/.zed_server`, which is what makes this work at
-all on NixOS.
+Both halves are declared, so this needs no clicking through Zed's UI:
+
+- **Server.** `hosts/forge/home.nix` puts the nix-built remote server at
+  `~/.zed_server`. This is what makes the feature work at all on NixOS — Zed
+  otherwise pushes a generic dynamically linked binary, and there is no
+  `/lib64/ld-linux-x86-64.so.2` for it to run against.
+- **Client.** `programs.zed-editor.userSettings.ssh_connections` in
+  `hosts/nixos/home.nix` names forge by its tailnet FQDN, so it appears in Zed's
+  project picker after an `nrs` on the laptop.
+
+Open it from the command palette (`ctrl-shift-p` → *open remote*), pick `forge`,
+then browse to a path. The picker's recent-paths list is reset by each `nrs` —
+the activation merge replaces the `ssh_connections` array rather than merging
+into it — so put any path worth keeping in the `projects` list in nix.
 
 **Client and server versions must match.** Both come from this flake's nixpkgs,
-so after `nix flake update` rebuild *both* hosts. If they drift anyway, set
-`"upload_binary_over_ssh": true` in the laptop's Zed settings.
+so after `nix flake update` rebuild *both* hosts. Compare `zed --version` on the
+laptop against the binary name under `~/.zed_server` on forge; if they drift
+anyway, set `upload_binary_over_ssh = true;` on the connection as a stopgap.
+
+Forge must be awake before Zed will connect — it is powered off between
+sessions, so [§11](#11-wake-on-lan-from-the-jumpbox) comes first on a cold box.
 
 ## 11. Wake-on-LAN from the jumpbox
 

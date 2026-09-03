@@ -105,6 +105,31 @@
       # edge; if that turns out too wide for comfortable prose, drop this key
       # and set `max_width` to something like 1400 instead.
       markdown_preview.limit_content_width = false;
+
+      # Remote hosts, for Zed's project picker. The server half is in
+      # hosts/<host>/home.nix, which installs the nix-built remote server into
+      # ~/.zed_server — without it Zed pushes a generic dynamically linked
+      # binary that no NixOS host can run. See docs/forge-install.md §10.
+      #
+      # The tailnet FQDN rather than the short name: the router answers `forge`
+      # out of its own DHCP records before MagicDNS is consulted, and those
+      # records outlive the machine that created them (docs/nuc-install.md §6
+      # hit exactly this). Naming the full name here also means this does not
+      # depend on a hand-written ~/.ssh/config alias existing.
+      #
+      # `projects` is deliberately empty. Zed appends every remote path you
+      # open to it, but the activation merge replaces arrays wholesale rather
+      # than merging them, so that list is reset on each `nrs`. Connecting is
+      # unaffected — only the picker's recent-paths list — and anything worth
+      # keeping across rebuilds belongs here rather than in Zed's own state.
+      ssh_connections = [
+        {
+          host = "forge.taile6c0b.ts.net";
+          username = "andreas";
+          nickname = "forge";
+          projects = [ ];
+        }
+      ];
     };
   };
 
