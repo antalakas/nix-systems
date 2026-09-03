@@ -390,6 +390,24 @@ window-rule {
     }
 }
 
+// Green focus ring around any terminal whose shell is on scribe. Same
+// mechanism again — hosts/scribe/home.nix sets my.sshTint.enable, so its zsh
+// prefixes the title with "scribe: " for the whole session.
+//
+// scribe is the odd one of the three: it is a laptop you normally sit at
+// rather than a box you only ever reach remotely, so this rule fires less
+// often than forge's or nuc's. It is here for the case that does come up —
+// reaching the portable machine from this one while it is somewhere else.
+//
+// Green because the three rings now have to be told apart from each other and
+// from the default #7fc8ff: amber, violet, green.
+window-rule {
+    match app-id="^Alacritty$" title="^scribe: "
+    focus-ring {
+        active-color "#9ece6a"
+    }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Startup Layout Configuration
 // ─────────────────────────────────────────────────────────────
