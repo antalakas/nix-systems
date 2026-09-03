@@ -84,9 +84,15 @@
 
   # Docker itself is host-agnostic; where its data lives is not, so `data-root`
   # (or the filesystem mounted at /var/lib/docker) is set per host.
+  #
+  # `enableOnBoot` is mkDefault rather than a plain assignment so a host can
+  # turn it off without mkForce. Starting the daemon at boot is right for the
+  # two boxes that exist to run containers; scribe is a laptop where nothing
+  # normally uses Docker at all, and it socket-activates instead — a plain
+  # assignment here would make that a conflict rather than an override.
   virtualisation.docker = {
     enable = true;
-    enableOnBoot = true;
+    enableOnBoot = lib.mkDefault true;
   };
 
   services.tailscale.enable = true;

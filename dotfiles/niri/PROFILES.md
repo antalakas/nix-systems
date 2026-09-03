@@ -2,14 +2,21 @@
 
 Multiple monitor configurations that can be switched on demand.
 
+Each profile is a complete, standalone config file. That is forced by the
+format rather than chosen: niri's KDL has no include directive, so there is no
+way to factor the ~90% these files share into a common base. The practical
+consequence is that **a change to binds, layout or window rules has to be made
+in all four files**, and a diff between two of them should show only output
+blocks, startup lines and layout rules.
+
 ## Available Profiles
 
-### `home` - 3 Monitors
+### `home` - 3 Monitors — *the main laptop*
 - eDP-1: Laptop (bottom, 1920x1200)
 - DP-5: 32" horizontal (top center, 3072x1728)
 - DP-4: 27" vertical right (1440x2560)
 
-### `office` - 4 Monitors
+### `office` - 4 Monitors — *the main laptop*
 - eDP-1: Laptop (bottom center, under DP-6)
 - DP-6: 27" horizontal center (top) – A
 - DP-2: 27" vertical right – B
@@ -17,7 +24,7 @@ Multiple monitor configurations that can be switched on demand.
 
 Layout: **C (left) – A (center) – B (right)** + laptop below A
 
-### `igo` - 2 Monitors
+### `igo` - 2 Monitors — *the main laptop*
 - eDP-1: Laptop (bottom, 1920x1200 logical at scale 2)
 - DP-1: 24" HP ZR2440w (directly above, 1920x1200 at scale 1.0)
 
@@ -35,7 +42,23 @@ absorbs the rest: Slack, Logseq and both terminals on WS 1, Brave/Andreas and
 Tutanota on WS 2. Workspace numbers are unchanged, so `Mod+1` and `Mod+2` still
 mean the same two sets of windows as in the other profiles.
 
+### `mobile` - 1 Monitor — *scribe (Dell XPS 9310)*
+- eDP-1: the internal panel, and nothing else
+
+Not part of the switcher below, and not installed on the main laptop.
+`hosts/scribe/home.nix` writes it straight to `~/.config/niri/config.kdl`,
+because a machine with one output has nothing to switch between.
+
+Two things make it a poor fit for the main laptop even undocked: its `scale` is
+set for the XPS's panel rather than this one's 4K, and it starts no
+applications — the switchable profiles open a working set across every monitor
+they define, and `mobile` opens a single terminal because the work it fronts
+for lives on forge.
+
 ## Switch Profiles
+
+Applies to the main laptop only; `home`, `office` and `igo` are the valid
+values.
 
 ```bash
 # Show current profile

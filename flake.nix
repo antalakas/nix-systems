@@ -123,5 +123,39 @@
       ];
       specialArgs = { inherit inputs; };
     };
+
+    # scribe — Dell XPS 9310, the portable one. Pure like forge and nuc, and
+    # wired the same way, but it is the first host to import
+    # modules/desktop.nix rather than modules/server.nix: it has a screen, and
+    # the work it does happens over the tailnet on forge.
+    #
+    # hosts/scribe/hardware-configuration.nix is still a placeholder that
+    # throws, so this output does not evaluate until it is replaced on the
+    # machine — which is also why the install runs the hardware scan before
+    # disko. hosts/scribe/disko.nix likewise still has a REPLACE_ME device
+    # path; unlike nuc's, no disk ID has been read off this laptop yet.
+    nixosConfigurations.scribe = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./hosts/scribe
+        inputs.disko.nixosModules.disko
+        inputs.sops-nix.nixosModules.sops
+
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "hm-backup";
+          home-manager.users.andreas = {
+            imports = [
+              nixvim.homeModules.nixvim
+              ./hosts/scribe/home.nix
+            ];
+            programs.nixvim.nixpkgs.source = nixpkgs;
+          };
+        }
+      ];
+      specialArgs = { inherit inputs; };
+    };
   };
 }
