@@ -20,9 +20,10 @@ laptop rather than a box in a cupboard:
   bring up, and only two USB-C ports to share between the installer stick, a
   network adapter and the charger. forge's and nuc's §1 both start by patching
   a cable in; this one starts with a trade-off.
-- **[§2](#2-clone-and-fill-in-the-disk-id)** — the disk ID is `REPLACE_ME` and
-  has to be filled in, as on forge. nuc's was already committed; this machine
-  has never been read.
+- **[§2](#2-clone-and-fill-in-the-disk-id)** — the disk ID. It was `REPLACE_ME`
+  when this was written; it is now the device read off this laptop during the
+  install, so reinstalling *this* machine checks it rather than fills it in.
+  Any other machine still has to edit it, and §4 formats whatever it says.
 - **[§4](#4-partition-and-mount)** — LUKS. `disko` prompts for a passphrase,
   twice, and getting the second one wrong wastes the format.
 - **[§8](#8-verify-the-desktop)** — there is a desktop to verify, which neither
@@ -33,38 +34,38 @@ in [§3](#3-generate-the-hardware-scan--before-disko), for the same reason and
 with the same consequences downstream. That one is not a preference; the other
 order cannot work here either.
 
-## Status: none of this has been built
+## Status: installed, and every step below has been run
 
-Read this before following anything below, because it changes how much weight
-to put on the rest.
+`scribe` was installed from this document on the night of 3–4 September 2026
+and is running. Read the rest as a record of a procedure that worked rather
+than as a plan, which is what it was when it was written: at that point nothing
+in `hosts/scribe/` had been evaluated, built or booted, and the only thing
+verified was that the Nix and KDL files parsed as balanced text.
 
-Every file this document refers to was written off-machine, in a checkout with
-no `nix` available. **Nothing has been evaluated, built or booted.** What was
-actually verified is bracket balance across the Nix and KDL files — that they
-parse as balanced text — and nothing beyond that. No option name has been
-checked against nixpkgs, no module has been instantiated, no closure has been
-built.
+What the install settled:
 
-The first genuine test is the `nix eval` at the end of
-[§3](#3-generate-the-hardware-scan--before-disko). It is placed there on
-purpose: it is cheap, and it runs *before* anything destructive, so a typo or a
-renamed option surfaces while the disk is still untouched. Do not skip it, and
-do not treat a clean `disko` run as evidence that the system config is sound —
+- **The configuration evaluates, builds and boots.** The `nix eval` at the end
+  of [§3](#3-generate-the-hardware-scan--before-disko) was the first time any
+  of it had been evaluated at all, and it passed unchanged, as did
+  `nixos-install`. No option name in `hosts/scribe/`, `modules/desktop.nix` or
+  `home/niri-desktop.nix` needed correcting.
+- **All three values guessed off-machine turned out right**, so
+  [§8](#8-verify-the-desktop) records what they came back as rather than what
+  to do if they were wrong. The panel is the FHD+ one and wants the committed
+  `scale 1.25`; PipeWire came up with a speaker sink and a microphone source on
+  the first boot; and `dell_laptop` does expose charge thresholds through
+  `natacpi`, so the 75/80 pair is live rather than inert.
+- **The keyboard works at the LUKS prompt** — the one failure here that costs a
+  reinstall. It is worth knowing *why* it works, because the scan does not say
+  so; see [§3](#3-generate-the-hardware-scan--before-disko).
+
+None of that is a reason to skip the checks. They are cheap, they run before
+anything destructive, and the flake has moved on since. In particular do not
+treat a clean `disko` run as evidence that the system config is sound —
 `disko` evaluates only `disko.devices`, so a broken option elsewhere in
-`hosts/scribe/` will not appear until `nixos-install` in [§5](#5-install).
-
-Two values in the config are outright guesses. Both have a check step in this
-document rather than a promise:
-
-- the niri `scale`, because the 9310 shipped with two very different panels —
-  [§8](#8-verify-the-desktop)
-- the TLP charge thresholds, which are a ThinkPad feature that `dell_laptop`
-  may not expose at all — [§8](#8-verify-the-desktop)
-
-And one whole area is new to this repo rather than copied from a working host,
-so it is the most likely thing to be wrong: audio. Nothing in this flake
-configured sound before `scribe`, so `modules/desktop.nix` is the first place
-PipeWire has ever appeared here. [§8](#8-verify-the-desktop) checks it.
+`hosts/scribe/` will not surface until `nixos-install` in [§5](#5-install), an
+hour later and with the disk already destroyed. §3 has the one-line check that
+closes that gap.
 
 ## What this adds to the flake
 
@@ -73,7 +74,7 @@ New files:
 | Path | What it is |
 |---|---|
 | `hosts/scribe/default.nix` | the host: hardware, power, sshd, docker |
-| `hosts/scribe/disko.nix` | LUKS + btrfs on the single NVMe. Carries a `REPLACE_ME` |
+| `hosts/scribe/disko.nix` | LUKS + btrfs on the single NVMe, and the device ID read off the machine |
 | `hosts/scribe/secrets.nix` | sops wiring, imported only once `secrets/scribe.yaml` exists |
 | `hosts/scribe/home.nix` | home-manager: tint, alacritty, Zed, the niri profile |
 | `hosts/scribe/hardware-configuration.nix` | placeholder that `throw`s until [§3](#3-generate-the-hardware-scan--before-disko) replaces it |
@@ -283,9 +284,11 @@ it prefixes, never the `>` redirect after it.
 
 ## 2. Clone and fill in the disk ID
 
-Unlike nuc, whose IDs were read off the machine while it still ran Ubuntu,
-`hosts/scribe/disko.nix` carries a `REPLACE_ME`. This is forge's §2, and the
-next step formats whatever you put there.
+`hosts/scribe/disko.nix` carries this machine's actual device now —
+`nvme-PC_SN730_NVMe_WDC_1024GB_2041C7801763`, read off it during the install —
+so for a reinstall of this laptop the section below is a check and not an edit.
+For a different machine, or after a disk swap, it is an edit, and §4 formats
+whatever you put there.
 
 ```bash
 nix-shell -p git
@@ -297,12 +300,22 @@ ls -l /dev/disk/by-id/ | grep -v part
 ```
 
 Take the `nvme-<model>_<serial>` form — readable, and stable across the
-`nvme-eui.*` and `..._1` duplicate aliases the kernel also exposes — and put it
-in `hosts/scribe/disko.nix` in place of `REPLACE_ME`. Then prove it resolves:
+`nvme-eui.*` and `..._1` duplicate aliases the kernel also exposes. Then prove
+that what the file says resolves to a device that exists, which is the check
+that matters and the one you can run either way:
 
 ```bash
-readlink -f /dev/disk/by-id/nvme-<model>_<serial>
+grep -n mainDisk hosts/scribe/disko.nix
+test -e "$(sed -n 's/.*mainDisk = "\(.*\)";/\1/p' hosts/scribe/disko.nix)" \
+  && echo "OK: disko points at a device that exists" \
+  || echo "BAD: path does not resolve — do not run disko"
 ```
+
+If it does need replacing, edit the **assignment** rather than every occurrence
+of the old string. The word being replaced appears in the comment above it too,
+and a blanket `sed -i "s|OLD|NEW|"` rewrites that prose into a sentence saying
+the opposite of what it means — which is exactly what happened during this
+install, and it went unnoticed until the file was read back on the laptop.
 
 **If `lsblk` shows no NVMe device at all, the disk is not broken and the cable
 is not loose** — there is no cable. Go back to the BIOS and set `SATA
@@ -343,13 +356,25 @@ grep -nE "availableKernelModules|fileSystems|swapDevices|hostPlatform" \
 
 - `nvme` in `boot.initrd.availableKernelModules`. This is the one that decides
   whether the machine boots at all.
-- **`usbhid` and `xhci_pci` in the same list**, and this host cares about them
-  in a way forge and nuc do not. The root filesystem is behind LUKS, so the
-  initrd has to take a passphrase from the keyboard *before* the real system
-  starts — and a keyboard that is not driven yet cannot type one. They will be
-  in there, because the scan was taken from a running USB installer, but this
-  is the host where confirming it is worth the two seconds. [§6](#6-first-boot)
-  is where you find out for certain.
+- **`xhci_pci` in the list — and `usbhid` absent from it, which is correct.**
+  This host cares about the initrd keyboard in a way forge and nuc do not: the
+  root filesystem is behind LUKS, so the initrd takes a passphrase from the
+  keyboard *before* the real system starts, and a keyboard that is not driven
+  yet cannot type one. The scan does not list the HID modules — NixOS adds them
+  separately through `boot.initrd.includeDefaultModules`, which defaults to
+  true and which nothing in `hosts/scribe/` turns off. So check the *merged*
+  option rather than the scan:
+
+  ```bash
+  nix --experimental-features "nix-command flakes" eval --json \
+    /tmp/nix-systems#nixosConfigurations.scribe.config.boot.initrd.availableKernelModules \
+    | tr ',' '\n' | grep -Ei 'hid|kbd'
+  ```
+
+  Want `usbhid`, `hid_generic` and `atkbd` among the results — internal and USB
+  keyboards are driven by different modules and it costs nothing to carry all
+  three. Check it here rather than at the prompt in [§6](#6-first-boot), where
+  the only way out is another installer boot and a hand-mounted LUKS volume.
 - **No `fileSystems` and no `swapDevices` lines at all.** `--no-filesystems`
   suppresses the entire storage section rather than emitting empty lists, so
   absent is the expected answer for both. If either *does* appear, the flag was
@@ -372,6 +397,32 @@ dirty working tree is enough: a flake evaluates against a copy of the tree
 containing only tracked files, so modifications to one are picked up and a
 brand-new file would be invisible. That asymmetry bites for real in
 [§7](#7-move-secrets-under-sops), where the new file is `secrets/scribe.yaml`.
+
+### Force the whole config, not just one option
+
+`networking.hostName` touches almost nothing. This forces every option in
+`hosts/scribe/`, `modules/desktop.nix` and `home/niri-desktop.nix`, and still
+builds nothing:
+
+```bash
+nix --experimental-features "nix-command flakes" eval --raw \
+  /tmp/nix-systems#nixosConfigurations.scribe.config.system.build.toplevel.drvPath
+#   /nix/store/…-nixos-system-scribe-26.11.….drv
+```
+
+A store path back means the configuration is sound. This is what closes the gap
+the status section warns about, and it costs a minute of CPU against an hour of
+`nixos-install` and a destroyed disk.
+
+Worth confirming the LUKS wiring reached the system config too, rather than
+only `disko.devices`:
+
+```bash
+nix --experimental-features "nix-command flakes" \
+  eval /tmp/nix-systems#nixosConfigurations.scribe.config.boot.initrd.luks.devices \
+  --apply builtins.attrNames
+#   [ "cryptroot" ]
+```
 
 ## 4. Partition and mount
 
@@ -427,6 +478,17 @@ rather than a race you are trying to win.
 
 ## 5. Install
 
+Two things to settle before starting, both cheap now and expensive later:
+
+- **Run it inside `tmux`.** §1's Wi-Fi route makes it likely you are driving
+  this over ssh from another machine, and a dropped connection takes
+  `nixos-install` with it — an hour of downloading, restarted. `nix-shell -p
+  tmux`, then `tmux new -s install`; reconnect with `tmux attach -t install`.
+- **Stay in one root shell from §2 through §5.** Cloning as root at the console
+  and then ssh'ing back in as `nixos` leaves a tree you cannot write, and the
+  `sed` in §2 fails with `couldn't open temporary file … Permission denied`,
+  which reads like a full disk rather than a permission problem.
+
 ```bash
 sudo mkdir -p /mnt/etc
 sudo cp -rT /tmp/nix-systems /mnt/etc/nixos
@@ -440,6 +502,17 @@ The `mkdir` and the `-T` are both nuc's, for nuc's reasons — the reordering in
 under `/mnt/etc` before now, and `cp -T` creates the destination but not its
 parent. Keep `-T`: it is the difference between `/mnt/etc/nixos/flake.nix` and
 `/mnt/etc/nixos/nix-systems/flake.nix`, and `nixos-install` fails on the second.
+
+If the root password prompt at the very end fails — mistyping the confirmation
+is the easy way — nothing is lost and there is no need to start over.
+`nixos-install` sets it last, after the system and bootloader are written, and
+prints the recovery itself:
+
+```bash
+nixos-enter --root '/mnt'
+passwd
+exit
+```
 
 Set the `andreas` password with care and do not skip it. greetd is the only way
 into this machine at the console, there is no root login over SSH
@@ -623,13 +696,19 @@ systemctl status tailscaled-autoconnect
 ## 8. Verify the desktop
 
 The section neither headless host has. Most of this is one command each, and
-two of them are settings that were guessed off-machine.
+two of them are settings that were guessed off-machine — both of which this
+machine has since confirmed, so what follows records the answer as well as the
+check.
 
-**Panel scale — this one was a guess.** The 9310 shipped with two very
-different panels and `dotfiles/niri/config-mobile.kdl` assumes the FHD+ one:
+**Panel scale — a guess when this was written, and right.** The 9310 shipped
+with two very different panels; this machine has the FHD+ one, which is what
+`dotfiles/niri/config-mobile.kdl` assumes:
 
 ```bash
 niri msg outputs
+#   Output "Sharp Corporation 0x14F9 Unknown" (eDP-1)
+#     Current mode: 1920x1200 @ 59.950 Hz (preferred)
+#     Logical size: 1536x960    Scale: 1.25
 ```
 
 - `1920x1200` → `scale 1.25` as committed, giving 1536x960 logical. Leave it.
@@ -639,13 +718,18 @@ niri msg outputs
 Edit `dotfiles/niri/config-mobile.kdl`, `nrs`, then `niri msg action
 load-config-file` — or just log out and back in.
 
-**Audio.** New to this repo: nothing configured sound before this host, so
+**Audio — the most likely thing to have been wrong, and it worked on the first
+boot.** Nothing configured sound in this repo before this host, so
 `modules/desktop.nix` is the first place PipeWire appears.
 
 ```bash
 wpctl status                 # a sink and a source, not "no devices"
 systemctl --user status pipewire wireplumber
 ```
+
+Here that gave a Speaker sink and a Digital Microphone source on the 500 Series
+on-package HD Audio device, with pipewire, wireplumber and pipewire-pulse all
+active — so the SOF firmware loaded.
 
 An empty device list here almost always means firmware rather than
 configuration — Tiger Lake's audio DSP needs the SOF blobs that
@@ -674,13 +758,28 @@ upower -i $(upower -e | grep BAT)
 
 `hosts/scribe/default.nix` asks TLP to stop charging at 80%, which is right for
 a machine that spends weeks on a desk and wrong for the morning before a day
-out. **Whether it takes effect is not a given.** Charge thresholds are a
+out. **Whether it takes effect is not a given** — charge thresholds are a
 ThinkPad feature that TLP drives through the kernel's
-`charge_control_*_threshold` sysfs files, and `dell_laptop` exposes those only
-on some models. `tlp-stat -b` reports either the thresholds or that the feature
-is unavailable — read which. If it is unavailable, the two settings are inert
-and the working equivalent is in the BIOS, under *Primary Battery Charge
-Configuration* → Custom.
+`charge_control_*_threshold` sysfs files, and `dell_laptop` exposes them only
+on some models. On this one it does:
+
+```
+Plugin: dell
+Supported features: charge thresholds
+Driver usage:
+* natacpi (dell_laptop) = active (charge thresholds)
+/sys/class/power_supply/BAT0/charge_control_start_threshold =     75 [%]
+/sys/class/power_supply/BAT0/charge_control_end_threshold   =     80 [%]
+```
+
+So the setting is live rather than inert. If `tlp-stat -b` instead reports the
+feature unavailable, the two settings do nothing and the working equivalent is
+in the BIOS, under *Primary Battery Charge Configuration* → Custom.
+
+Read `charge_full` against `charge_full_design` in the same output while you
+are there. This machine came back at 4018 of 6707 mAh — about 60% of its
+original capacity, ordinary for a 2020 laptop that has sat unused, but it makes
+the 80% stop 80% of a battery that is already three-fifths of what it was.
 
 **The rest of the session**, quickly: `Mod+D` opens fuzzel, `Mod+Return` a
 terminal, `Mod+A` a region screenshot, the brightness and volume keys move
@@ -705,9 +804,17 @@ recovered from later.
   whose key material is gone. It is 16MB and it is the whole game.
 
   ```bash
-  sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-<model>_<serial> \
+  DEV=/dev/disk/by-id/nvme-<model>_<serial>-part2
+  sudo cryptsetup isLuks "$DEV" && echo "yes, LUKS"
+  sudo cryptsetup luksHeaderBackup "$DEV" \
     --header-backup-file /tmp/scribe-luks-header.img
   ```
+
+  **`-part2`, not the bare disk.** The LUKS container is the second GPT
+  partition; the whole-disk path is the container holding it, and `cryptsetup`
+  rejects it with `is not a valid LUKS device` — which reads like the
+  encryption is missing rather than like a wrong path. `lsblk -f` shows which
+  partition says `crypto_LUKS`.
 
   Move it off the machine — a header backup stored on the disk it protects is
   not a backup. Treat it as equivalent to the passphrase, because with the
@@ -719,8 +826,8 @@ recovered from later.
   keyslot is a single point of failure that is entirely inside your head.
 
   ```bash
-  sudo cryptsetup luksAddKey /dev/disk/by-id/nvme-<model>_<serial>
-  sudo cryptsetup luksDump /dev/disk/by-id/nvme-<model>_<serial> | grep -A2 Keyslots
+  sudo cryptsetup luksAddKey "$DEV"
+  sudo cryptsetup luksDump "$DEV" | grep -A3 Keyslots
   ```
 
   Generate a long random one, store it in 1Password, and never type it. The
