@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run Claude Code in a sandboxed Docker container
-# Usage: claude-sandbox [--profile NAME] [--owner NAME] [--rebuild] [project-dir] [-- claude-args...]
+# Usage: claude-sandbox [--profile NAME] [--owner NAME] [--rebuild] [--no-devshell] [project-dir] [-- claude-args...]
 #
 # Examples:
 #   claude-sandbox                              # current dir, default (work) profile
@@ -8,6 +8,7 @@
 #   claude-sandbox --profile personal           # current dir, personal profile
 #   claude-sandbox --profile personal ~/proj    # specific project, personal profile
 #   claude-sandbox --owner TileDB-Inc           # force a GitHub owner's token
+#   claude-sandbox --no-devshell ~/proj         # do not load the project's flake devShell
 #   claude-sandbox . -- --continue              # pass args to claude
 #   claude-sandbox . -- "Fix the login bug"     # pass a prompt
 #
@@ -26,6 +27,12 @@
 # When a token is selected, GitHub SSH remotes are rewritten to HTTPS inside the
 # container and authenticated with it, so plain git fetch/push work despite the
 # sandbox having no SSH keys.
+#
+# Two things come from the host rather than the image, when the host has them:
+# Nix — the store, the daemon socket and the host's own nix binary, so that a
+# workspace with a flake.nix starts claude inside its devShell — and Docker's
+# socket, so the agent can run containers. Each has a section below with the
+# reasoning and its opt-out, and the startup banner says what was found.
 #
 # Profiles live in ~/.claude-profiles/<name>/ with .claude/ and .claude.json,
 # and optionally .aws/ — see the AWS credential selection section below.
@@ -56,6 +63,10 @@ while [ $# -gt 0 ]; do
             ;;
         --rebuild)
             REBUILD=true
+            shift
+            ;;
+        --no-devshell)
+            CLAUDE_SANDBOX_DEVSHELL=off
             shift
             ;;
         *)
@@ -263,11 +274,100 @@ fi
 # hosts/nixos/home.nix.
 CLAUDE_REFS_ROOT="${CLAUDE_REFS_ROOT:-$HOME/workspace}"
 
+# --- Nix, borrowed from the host --------------------------------------------
+# Nothing installs Nix in the image. On a host that has it — every NixOS host
+# does — the sandbox borrows the host's: /nix/store read-only, the daemon's
+# socket, and the directory holding the host's `nix` binary. That binary is a
+# store path linked against store paths, so it runs unchanged on Debian once
+# the store is mounted; and being the host's own, it always speaks the host
+# daemon's protocol, which a Nix installed in the image could not promise.
+# Evaluation happens in the container. Builds, downloads and garbage collection
+# happen on the host through the daemon, with the host's settings, and what
+# gets built is shared with the host's own `nix develop` in the same repository.
+#
+# With this in place the image's entrypoint loads /workspace's flake devShell
+# before starting claude, so a repository's pinned toolchain is what the agent
+# gets — see sandbox-entrypoint in the Dockerfile. --no-devshell skips just
+# that; CLAUDE_SANDBOX_NIX=none mounts nothing.
+#
+# The daemon accepts any local user by default (nix.settings.allowed-users) and
+# sees the container's uid 1000 as this one, so nothing on the host side has to
+# change — and the container gains nothing this user's own shell does not have.
+#
+# One thing to know: a `result` symlink from `nix build` in the sandbox is
+# registered with the daemon as /workspace/result, a path the host does not
+# have, so it protects nothing from the weekly GC. Rebuilding is a cache hit.
+NIX_BIN_DIR=""
+if [ "${CLAUDE_SANDBOX_NIX:-}" = "none" ]; then
+    NIX_STATUS="none (CLAUDE_SANDBOX_NIX=none)"
+elif ! command -v nix >/dev/null 2>&1; then
+    NIX_STATUS="none (no nix on this host)"
+elif [ ! -S /nix/var/nix/daemon-socket/socket ]; then
+    NIX_STATUS="none (no nix daemon socket on this host)"
+else
+    # Through /run/current-system/sw/bin/nix to the store path: the one path
+    # that exists on both sides of the mount.
+    NIX_BIN_DIR="$(dirname "$(readlink -f "$(command -v nix)")")"
+    case "$NIX_BIN_DIR" in
+        /nix/store/*) NIX_STATUS="host daemon, $(nix --version 2>/dev/null || echo 'version unknown')" ;;
+        *)
+            NIX_STATUS="none ($NIX_BIN_DIR is not in /nix/store)"
+            NIX_BIN_DIR=""
+            ;;
+    esac
+fi
+
+# --- Docker, the host's ------------------------------------------------------
+# The host daemon's socket, so the agent can run containers: testcontainers in
+# unit tests, compose stacks, kind clusters. The image carries the client only.
+#
+# THIS IS ROOT ON THE HOST. Anyone who can talk to dockerd can start a
+# privileged container with / mounted, and the agent in here runs with
+# permission prompts off. So the socket turns the sandbox from a containment
+# boundary into a working-directory convention: what protects the host is the
+# same thing that protects it from your own shell — what you ask for. Mount it
+# because the work needs it; CLAUDE_SANDBOX_DOCKER=none for a session that
+# does not, or a path for a socket that lives elsewhere.
+#
+# The socket is root:docker on the host and the container has no such group,
+# so the socket's gid is added to the user by number.
+#
+# Bind mounts are the one place the two sides disagree: a source path in
+# `docker run -v` or a compose file is resolved by the daemon, on the host,
+# where /workspace does not exist — the mount would silently come up empty. So
+# with the socket the project is mounted a second time, at its host path, and
+# that path is exported as CLAUDE_SANDBOX_HOST_WORKSPACE. Anything that
+# bind-mounts the tree has to run from there (tile-ai's `devstack up` does, for
+# its server profile); named volumes and build contexts need no such care.
+DOCKER_SOCK=""
+DOCKER_GID=""
+if [ "${CLAUDE_SANDBOX_DOCKER:-}" = "none" ]; then
+    DOCKER_STATUS="none (CLAUDE_SANDBOX_DOCKER=none)"
+elif [ -n "${CLAUDE_SANDBOX_DOCKER:-}" ]; then
+    DOCKER_SOCK="$CLAUDE_SANDBOX_DOCKER"
+    if [ ! -S "$DOCKER_SOCK" ]; then
+        echo "❌ CLAUDE_SANDBOX_DOCKER=$DOCKER_SOCK is not a socket." >&2
+        exit 1
+    fi
+    DOCKER_STATUS="$DOCKER_SOCK (CLAUDE_SANDBOX_DOCKER)"
+elif [ -S /var/run/docker.sock ]; then
+    DOCKER_SOCK=/var/run/docker.sock
+    DOCKER_STATUS="$DOCKER_SOCK"
+else
+    DOCKER_STATUS="none (no /var/run/docker.sock on this host)"
+fi
+if [ -n "$DOCKER_SOCK" ]; then
+    DOCKER_GID="$(stat -c '%g' "$DOCKER_SOCK")"
+    DOCKER_STATUS="$DOCKER_STATUS, gid $DOCKER_GID — root on this host"
+fi
+
 echo "🔒 Starting Claude Code in sandbox"
 echo "   Profile: $PROFILE"
 echo "   Project: $PROJECT_DIR"
 echo "   GitHub:  owner=${GH_OWNER:-<unknown>} token=$GH_TOKEN_STATUS"
 echo "   AWS:     $AWS_STATUS"
+echo "   Nix:     $NIX_STATUS"
+echo "   Docker:  $DOCKER_STATUS"
 echo "   Refs:    root=$CLAUDE_REFS_ROOT"
 echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
 echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
@@ -318,6 +418,41 @@ fi
 # for a scoped user, or run the login on the host and mount the result.
 if [ -n "$AWS_DIR" ]; then
     DOCKER_ARGS+=(-v "$AWS_DIR:/home/node/.aws:ro")
+fi
+
+# Mount the host's Nix. Resolved above. The store read-only, since the daemon
+# on the host is its only writer; the socket's directory read-write, which is
+# what a connect() inside it can rely on. The binaries land where the image's
+# PATH already looks.
+if [ -n "$NIX_BIN_DIR" ]; then
+    DOCKER_ARGS+=(
+        -v /nix/store:/nix/store:ro
+        -v /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket
+        -v "$NIX_BIN_DIR:/opt/nix/bin:ro"
+    )
+fi
+
+# Whether the entrypoint loads the workspace's devShell. Forwarded by name,
+# like MEMPALACE_MINE_CPUS: unset on the host is unset in the container, and
+# the entrypoint's default — load it — applies.
+if [ -n "${CLAUDE_SANDBOX_DEVSHELL:-}" ]; then
+    export CLAUDE_SANDBOX_DEVSHELL
+    DOCKER_ARGS+=(-e CLAUDE_SANDBOX_DEVSHELL)
+fi
+
+# Mount the host's Docker socket. Resolved above.
+if [ -n "$DOCKER_SOCK" ]; then
+    DOCKER_ARGS+=(
+        -v "$DOCKER_SOCK:/var/run/docker.sock"
+        --group-add "$DOCKER_GID"
+    )
+    # The project at its host path as well, for bind mounts — see the Docker
+    # section. Not when the two coincide: docker refuses a duplicate mount point.
+    if [ "$PROJECT_DIR" != /workspace ]; then
+        DOCKER_ARGS+=(-v "$PROJECT_DIR:$PROJECT_DIR")
+    fi
+    export CLAUDE_SANDBOX_HOST_WORKSPACE="$PROJECT_DIR"
+    DOCKER_ARGS+=(-e CLAUDE_SANDBOX_HOST_WORKSPACE)
 fi
 
 # Mount the host's global git config, so commits made in the sandbox carry the

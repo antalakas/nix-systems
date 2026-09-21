@@ -16,6 +16,12 @@
 # https://github.com/settings/personal-access-tokens/new by setting "Resource
 # owner" to the owner below. Org-owned tokens may need an org admin to approve
 # them before they start working.
+#
+# Grant "Checks" and "Commit statuses" (read) alongside the obvious Contents,
+# Pull requests, Issues and Actions. They are the two that get missed, and the
+# miss is quiet: everything else works and only `gh pr checks` fails, with
+# "Resource not accessible by personal access token" — an agent then scrapes
+# the Actions API instead of saying so.
 
 antalakas=github_pat_REPLACE_ME
 TileDB-Inc=github_pat_REPLACE_ME

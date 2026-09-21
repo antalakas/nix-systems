@@ -345,6 +345,82 @@ Two things differ from the laptop:
   home.sessionVariables.MEMPALACE_MINE_CPUS = "12";
   ```
 
+### What it borrows from the host
+
+Two things the image does not carry and takes from forge at launch when they
+are there. The banner has a `Nix:` and a `Docker:` line saying what it found.
+
+- **Nix.** `/nix/store` read-only, the daemon socket, and the host's own `nix`
+  binaries (at `/opt/nix/bin` inside). Evaluation runs in the container; every
+  build, download and garbage collection is the host daemon's, with the host's
+  settings, so `nix develop` on forge and in the sandbox fill the same store.
+  When the workspace has a `flake.nix`, the entrypoint loads its default
+  devShell into the environment claude runs in — the way nix-direnv does it,
+  with `nix print-dev-env` — so a repository's pinned toolchain is what the
+  agent gets, with no `nix develop -c` in front of every command. In tile-ai
+  that is Go 1.26 with cgo against nixpkgs' TileDB, the MariaDB client for
+  `mysqldump`, node 24 with npm 11.17, golangci-lint, redocly and the rest of
+  its shell; `nix run .#help` lists the checks. `claude-sandbox --no-devshell`
+  skips the shell; `CLAUDE_SANDBOX_NIX=none` mounts nothing.
+
+  The first start on a repository downloads its shell — tile-ai's is about
+  1.5 GiB — and prints nix's progress before claude's screen appears; after
+  that it is seconds. Playwright's browsers are the one thing deliberately
+  outside that shell, and the flake builds them the same way:
+  `PLAYWRIGHT_BROWSERS_PATH=$(nix build --print-out-paths .#playwright-browsers)`.
+  A `result` symlink from `nix build` in the sandbox is `/workspace/result` as
+  far as the daemon knows, a path forge does not have, so it protects nothing
+  from the weekly GC; rebuilding is a cache hit.
+
+- **Docker.** The host's socket, with the container user given the socket's
+  group. `docker ps` in the sandbox lists forge's containers, and
+  testcontainers, compose and kind all work against them. **This is root on
+  forge**: whoever can talk to dockerd can start a privileged container with
+  `/` mounted, and the agent runs with permission prompts off. The socket turns
+  the sandbox from a containment boundary into a working-directory convention.
+  Mount it because the work needs it, and use `CLAUDE_SANDBOX_DOCKER=none` for
+  a session that does not.
+
+  One seam: a bind-mount path in `docker run -v` or a compose file is resolved
+  by the daemon, on forge, where `/workspace` does not exist — the mount would
+  come up empty. So the project is also mounted at its host path, exported as
+  `CLAUDE_SANDBOX_HOST_WORKSPACE`, and anything that bind-mounts the tree —
+  tile-ai's `devstack up` with the `server` profile mounts the repository into
+  the server container — must run from there:
+
+  ```bash
+  cd "$CLAUDE_SANDBOX_HOST_WORKSPACE" && devstack up
+  ```
+
+  Named volumes, testcontainers and build contexts need no such care.
+
+Rebuild the image after changing the Dockerfile — and the host first, so
+home-manager has put the new Dockerfile and launcher in place:
+
+```bash
+nrs                       # new Dockerfile into ~/.config, new launcher into ~/.local/bin
+claude-sandbox --rebuild  # slow: Java, terraform, the docker CLI, uv, kind, helm-unittest
+```
+
+Then, in a sandbox opened on tile-ai, from `services/server`:
+
+```bash
+go version                       # go1.26.x, from the flake
+go env CGO_ENABLED               # 1
+go build -mod vendor -tags=external_libzstd ./...
+go test  -mod vendor -tags=external_libzstd ./internal/authz/... ./internal/xid/...
+mysql --version && mysqldump --version
+docker ps
+nix run .#go-lint -- services/server
+npm --version && java -version && helm unittest --help
+terraform version && uv --version && jq --version
+```
+
+The GitHub token needs two permissions that are easy to leave out: **Checks**
+and **Commit statuses**, read. Without them `gh pr checks` fails with "Resource
+not accessible by personal access token" while everything else works. See
+`dotfiles/claude-code/github-tokens.example`.
+
 ## 9. Kubernetes
 
 ```bash

@@ -170,8 +170,10 @@
     # is a property of the console, not something to fix here.
     ".p10k.zsh".source = ../dotfiles/p10k.zsh;
 
-    # Claude Code sandbox. Needs nothing but Docker, so it is identical on
-    # every host; the machine-specific parts (GitHub PATs, profile logins) live
+    # Claude Code sandbox. Identical on every host: it needs Docker to run at
+    # all, and what else it borrows from the host — the Docker socket, the Nix
+    # store and daemon — the launcher discovers at start and does without when
+    # absent. The machine-specific parts (GitHub PATs, profile logins) live
     # outside the nix store — see docs/forge-install.md.
     ".config/claude-code/Dockerfile".source = ../dotfiles/claude-code/Dockerfile;
     ".local/bin/claude-sandbox" = {
