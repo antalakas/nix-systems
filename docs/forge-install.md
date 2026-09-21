@@ -402,19 +402,37 @@ nrs                       # new Dockerfile into ~/.config, new launcher into ~/.
 claude-sandbox --rebuild  # slow: Java, terraform, the docker CLI, uv, kind, helm-unittest
 ```
 
-Then, in a sandbox opened on tile-ai, from `services/server`:
+Then, in a sandbox opened on tile-ai — the devShell and the GitHub token both
+follow the workspace, so a sandbox opened on this repository gets the personal
+token and prints `dev shell: NOT loaded` (this flake has no devShell; the line
+is expected there) — from `services/server`:
 
 ```bash
 go version                       # go1.26.x, from the flake
 go env CGO_ENABLED               # 1
-go build -mod vendor -tags=external_libzstd ./...
+go build -mod vendor -tags=external_libzstd -o /dev/null ./cmd/services/main.go
 go test  -mod vendor -tags=external_libzstd ./internal/authz/... ./internal/xid/...
-mysql --version && mysqldump --version
+mysql --version && mysqldump --version   # MariaDB 11.4; each prints a deprecation line first
 docker ps
+go test  -mod vendor -tags=external_libzstd -v \
+    -run 'TestSMTPPasswordOverrideMigration|TestNormalizePath' ./internal/test/testdb/
 nix run .#go-lint -- services/server
 npm --version && java -version && helm unittest --help
 terraform version && uv --version && jq --version
 ```
+
+`go build ./...` is not the check: `partner/snowflakeapi/iceberg/client` is a
+`package main` without a `main`, and the Makefile skips `/iceberg/` for the same
+reason; the binary target is what `make` builds. The testdb pair exercises the
+Docker seam and the MariaDB client together: the first test starts `mysql:9.1.0`
+through the socket, migrates, and snapshots the schema with `mysqldump` (which is
+`mariadb-dump` here); the second loads that snapshot instead of migrating — with
+`-v` you see `mysqldump read bytes` and then `loaded from dump`. The console's
+`npm ci` runs with `.npmrc` in place, and `tsc --noEmit` reports its 89-error
+baseline.
+
+Accepted on forge 2026-09-21 (nixos-systems b5d010b, tile-ai 4bb9ee2589): the
+shell came out of the store in 2 s, the cgo build took 32 s, the testdb pair 7 s.
 
 The GitHub token needs two permissions that are easy to leave out: **Checks**
 and **Commit statuses**, read. Without them `gh pr checks` fails with "Resource
