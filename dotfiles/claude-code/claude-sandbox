@@ -231,6 +231,31 @@ else
     GH_TOKEN_STATUS="none (no GitHub origin remote; use --owner)"
 fi
 
+# --- Fireworks key ------------------------------------------------------------
+# tile-ai's `nix run .#review-draft` reads FIREWORKS_API_KEY. The key lives per
+# profile, in ~/.claude-profiles/<profile>/fireworks-key, so a sandbox on another
+# profile never sees it — the same reason GitHub tokens are per owner. Mode 0600
+# or it is refused, like the tokens file above. Absent means no key, no error.
+FIREWORKS_KEY_FILE="$PROFILE_DIR/fireworks-key"
+SANDBOX_FIREWORKS_KEY=""
+FIREWORKS_STATUS="none (no $FIREWORKS_KEY_FILE)"
+if [ -f "$FIREWORKS_KEY_FILE" ]; then
+    case "$(stat -c '%a' "$FIREWORKS_KEY_FILE" 2>/dev/null || echo '')" in
+        *00|0) ;;
+        *)
+            echo "❌ $FIREWORKS_KEY_FILE is readable beyond its owner." >&2
+            echo "   Run: chmod 600 $FIREWORKS_KEY_FILE" >&2
+            exit 1
+            ;;
+    esac
+    SANDBOX_FIREWORKS_KEY="$(tr -d '[:space:]' < "$FIREWORKS_KEY_FILE")"
+    if [ -n "$SANDBOX_FIREWORKS_KEY" ]; then
+        FIREWORKS_STATUS="$FIREWORKS_KEY_FILE"
+    else
+        FIREWORKS_STATUS="none ($FIREWORKS_KEY_FILE is empty)"
+    fi
+fi
+
 # --- AWS credential selection -----------------------------------------------
 # Prefer a per-profile ~/.claude-profiles/<profile>/.aws over the host's ~/.aws.
 #
@@ -366,6 +391,7 @@ echo "   Profile: $PROFILE"
 echo "   Project: $PROJECT_DIR"
 echo "   GitHub:  owner=${GH_OWNER:-<unknown>} token=$GH_TOKEN_STATUS"
 echo "   AWS:     $AWS_STATUS"
+echo "   Fireworks: $FIREWORKS_STATUS"
 echo "   Nix:     $NIX_STATUS"
 echo "   Docker:  $DOCKER_STATUS"
 echo "   Refs:    root=$CLAUDE_REFS_ROOT"
@@ -531,6 +557,13 @@ fi
 # Pass API key if set, otherwise browser auth will be used
 if [ -n "$ANTHROPIC_API_KEY" ]; then
     DOCKER_ARGS+=(-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
+fi
+
+# Pass the profile's Fireworks key by name, for the same argv reason as GH_TOKEN
+# below.
+if [ -n "$SANDBOX_FIREWORKS_KEY" ]; then
+    export FIREWORKS_API_KEY="$SANDBOX_FIREWORKS_KEY"
+    DOCKER_ARGS+=(-e FIREWORKS_API_KEY)
 fi
 
 # Pass the workspace's GitHub token (enables gh CLI and Claude GitHub access).

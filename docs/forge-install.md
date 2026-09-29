@@ -315,6 +315,11 @@ $EDITOR ~/.config/claude-code/github-tokens
 mkdir -p ~/.claude-profiles/work/.claude ~/.claude-profiles/personal/.claude
 claude-sandbox                      # work profile;  run /login
 claude-sandbox --profile personal   # personal;      run /login
+
+# Optional: a Fireworks key for tile-ai's review drafts, per profile, mode 0600.
+# Injected as FIREWORKS_API_KEY; the banner says whether it was found.
+install -m 600 /dev/null ~/.claude-profiles/work/fireworks-key
+$EDITOR ~/.claude-profiles/work/fireworks-key
 ```
 
 Reference mounts need no editing here. `refs.conf` is deployed by home-manager
