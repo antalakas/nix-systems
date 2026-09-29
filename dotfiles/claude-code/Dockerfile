@@ -24,6 +24,8 @@ ENV CURL_HOME=/etc/curl-build
 # ca-certificates is named rather than inherited: the base image marks it auto
 # and can drop it, and every curl below — and the Nix client's own fetches —
 # need a CA bundle. jq because `gh --jq` does not reach into shell pipelines.
+# sqlite3 because MemPalace's palace is a chroma.sqlite3 with no CLI of its
+# own; `sqlite3 -readonly` answers a query without going through the venv.
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -33,6 +35,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     unzip \
     jq \
+    sqlite3 \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
@@ -174,10 +177,22 @@ RUN mkdir -p /etc/nix \
 
 ARG CLAUDE_CODE_VERSION=2.1.284
 
+# MemPalace in its own venv, reached through symlinks rather than by putting
+# the venv's bin on PATH. It was on PATH, ahead of /usr/local/bin and /usr/bin,
+# so `python3` in a session was the venv's interpreter and a skill's
+# `pip install` would have landed in the venv. The console scripts carry the
+# venv's shebang, so a symlink is all a name lookup needs: `mempalace` for the
+# CLI and the session-start hook, `mempalace-mcp` for the plugin's MCP server
+# (its .mcp.json names the command bare), `mempalace-light-mcp` likewise. The
+# miner gets its interpreter from MEMPALACE_PYTHON below, never from PATH.
+# `python3` in a session is /usr/bin/python3; libraries come from
+# `uv run --with`, which is how the tools expect them.
 RUN python3 -m venv /opt/mempalace \
     && /opt/mempalace/bin/pip install --no-cache-dir --upgrade pip \
     && /opt/mempalace/bin/pip install --no-cache-dir mempalace \
-    && ln -s /opt/mempalace/bin/mempalace /usr/local/bin/mempalace \
+    && for cmd in mempalace mempalace-mcp mempalace-light-mcp; do \
+         ln -s "/opt/mempalace/bin/$cmd" "/usr/local/bin/$cmd"; \
+       done \
     && mkdir -p /home/node/.mempalace /home/node/.cache \
     && chown -R node:node /home/node/.mempalace /home/node/.cache
 
@@ -279,7 +294,7 @@ EOF
 
 USER node
 ENV TERM=xterm-256color COLORTERM=truecolor \
-    PATH="/home/node/.local/bin:/opt/nix/bin:/opt/mempalace/bin:/usr/lib/postgresql/${PG_MAJOR}/bin:${PATH}" \
+    PATH="/home/node/.local/bin:/opt/nix/bin:/usr/lib/postgresql/${PG_MAJOR}/bin:${PATH}" \
     DISABLE_AUTOUPDATER=1 \
     MEMPALACE_PYTHON=/usr/local/bin/mempalace-python-capped \
     NIX_REMOTE=daemon \

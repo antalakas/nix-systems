@@ -292,12 +292,77 @@ else
     AWS_STATUS="none"
 fi
 
-# --- Reference mount root ---------------------------------------------------
+# --- Reference mounts -------------------------------------------------------
 # refs.conf entries are written relative to this, so the same file works on
 # every machine and only the root moves. $HOME/workspace is the common case;
 # the laptop keeps its repos on an EndeavourOS mount and overrides it in
 # hosts/nixos/home.nix.
 CLAUDE_REFS_ROOT="${CLAUDE_REFS_ROOT:-$HOME/workspace}"
+
+# Each line is <host-path>:<container-path>, with an optional :ro or :rw after
+# it. The host side is resolved against $CLAUDE_REFS_ROOT unless it is already
+# absolute. That is what lets one refs.conf serve every host: the repo layout
+# under the root is the same everywhere, only the root itself moves. An
+# absolute entry still works, as an escape hatch for a repo outside the root.
+#
+# Read-only unless the line says :rw. A writable entry is the host's directory
+# edited in place; the one so far is tile-ai's research/ at /notes, so that a
+# session on any repository writes its journal entry when the task is done
+# rather than a session later. Keep :rw to directories meant to be written by
+# an agent — the read-only default is what lets a session read every
+# reference without being able to change one.
+#
+# Keep each entry a specific project directory. Mounting $HOME, ~/.config, or
+# ~/.config/claude-code would expose ~/.config/claude-code/github-tokens to the
+# container, which defeats the per-owner GitHub token selection above.
+#
+# A host path that does not exist is skipped with a warning rather than mounted.
+# Docker would otherwise create it as an empty root-owned directory, and the
+# agent would report an empty repository instead of a broken mount — which is
+# exactly what a wrong root on a new host produces, once per entry.
+#
+# Parsed here, before the banner, so the banner's Refs: line can name what is
+# writable and the warnings land above it instead of scrolling under it.
+REF_MOUNTS=()
+REFS_RW=""
+REFS_CONF="$(readlink -f ~/.config/claude-code/refs.conf 2>/dev/null || true)"
+if [ -f "$REFS_CONF" ]; then
+    refs_missing=0
+    while IFS= read -r line; do
+        [[ -z "${line//[[:space:]]/}" || "$line" == \#* ]] && continue
+        raw="$line"
+        # The mode suffix first, then split on the last colon, the same rule
+        # docker itself uses.
+        ref_mode=ro
+        case "$line" in
+            *:rw) ref_mode=rw; line="${line%:rw}" ;;
+            *:ro) line="${line%:ro}" ;;
+        esac
+        ref_host="${line%:*}"
+        ref_target="${line##*:}"
+        if [ "$ref_host" = "$line" ] || [ -z "$ref_host" ] || [ -z "$ref_target" ]; then
+            echo "⚠️  refs.conf: malformed line, skipping: $raw" >&2
+            continue
+        fi
+        case "$ref_host" in
+            /*) ;;
+            *) ref_host="$CLAUDE_REFS_ROOT/$ref_host" ;;
+        esac
+        if [ ! -d "$ref_host" ]; then
+            echo "⚠️  refs.conf: $ref_host does not exist — $ref_target not mounted" >&2
+            refs_missing=$((refs_missing + 1))
+            continue
+        fi
+        REF_MOUNTS+=(-v "$ref_host:$ref_target:$ref_mode")
+        if [ "$ref_mode" = rw ]; then
+            REFS_RW="$REFS_RW${REFS_RW:+, }$ref_target"
+        fi
+    done < "$REFS_CONF"
+    if [ "$refs_missing" -gt 0 ]; then
+        echo "   $refs_missing reference mount(s) skipped — is CLAUDE_REFS_ROOT=$CLAUDE_REFS_ROOT right for this host?" >&2
+        echo "" >&2
+    fi
+fi
 
 # --- Nix, borrowed from the host --------------------------------------------
 # Nothing installs Nix in the image. On a host that has it — every NixOS host
@@ -394,7 +459,7 @@ echo "   AWS:     $AWS_STATUS"
 echo "   Fireworks: $FIREWORKS_STATUS"
 echo "   Nix:     $NIX_STATUS"
 echo "   Docker:  $DOCKER_STATUS"
-echo "   Refs:    root=$CLAUDE_REFS_ROOT"
+echo "   Refs:    root=$CLAUDE_REFS_ROOT${REFS_RW:+, writable: $REFS_RW}"
 echo "   Mempalace: $MEMPALACE_VOLUME -> $MEMPALACE_DIR"
 echo "   Cache: $MEMPALACE_CACHE_VOLUME -> $MEMPALACE_CACHE_DIR"
 if [ -n "${MEMPALACE_MINE_CPUS:-}" ]; then
@@ -510,49 +575,9 @@ if git config --global --list >/dev/null 2>&1; then
     DOCKER_ARGS+=(-v "$SANDBOX_GITCONFIG:/home/node/.gitconfig:ro")
 fi
 
-# Load read-only reference mounts from refs.conf.
-#
-# The host side of each line is resolved against $CLAUDE_REFS_ROOT unless it is
-# already absolute. That is what lets one refs.conf serve every host: the repo
-# layout under the root is the same everywhere, only the root itself moves. An
-# absolute entry still works, as an escape hatch for a repo outside the root.
-#
-# Keep each entry a specific project directory. Mounting $HOME, ~/.config, or
-# ~/.config/claude-code would expose ~/.config/claude-code/github-tokens to the
-# container, which defeats the per-owner GitHub token selection above.
-#
-# A host path that does not exist is skipped with a warning rather than mounted.
-# Docker would otherwise create it as an empty root-owned directory, and the
-# agent would report an empty repository instead of a broken mount — which is
-# exactly what a wrong root on a new host produces, once per entry.
-REFS_CONF="$(readlink -f ~/.config/claude-code/refs.conf 2>/dev/null || true)"
-if [ -f "$REFS_CONF" ]; then
-    refs_missing=0
-    while IFS= read -r line; do
-        [[ -z "${line//[[:space:]]/}" || "$line" == \#* ]] && continue
-        # Split on the last colon, the same rule docker itself uses.
-        ref_host="${line%:*}"
-        ref_target="${line##*:}"
-        if [ "$ref_host" = "$line" ] || [ -z "$ref_host" ] || [ -z "$ref_target" ]; then
-            echo "⚠️  refs.conf: malformed line, skipping: $line" >&2
-            continue
-        fi
-        case "$ref_host" in
-            /*) ;;
-            *) ref_host="$CLAUDE_REFS_ROOT/$ref_host" ;;
-        esac
-        if [ ! -d "$ref_host" ]; then
-            echo "⚠️  refs.conf: $ref_host does not exist — $ref_target not mounted" >&2
-            refs_missing=$((refs_missing + 1))
-            continue
-        fi
-        DOCKER_ARGS+=(-v "$ref_host:$ref_target:ro")
-    done < "$REFS_CONF"
-    if [ "$refs_missing" -gt 0 ]; then
-        echo "   $refs_missing reference mount(s) skipped — is CLAUDE_REFS_ROOT=$CLAUDE_REFS_ROOT right for this host?" >&2
-        echo "" >&2
-    fi
-fi
+# Reference mounts from refs.conf, parsed in the section above so the banner
+# could report them.
+DOCKER_ARGS+=("${REF_MOUNTS[@]}")
 
 # Pass API key if set, otherwise browser auth will be used
 if [ -n "$ANTHROPIC_API_KEY" ]; then

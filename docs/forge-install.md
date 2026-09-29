@@ -329,6 +329,14 @@ you want under that root and they appear at `/ref/<name>` inside the sandbox;
 the startup banner prints the root it used, and warns per entry it could not
 find rather than mounting an empty directory in its place.
 
+One entry is writable. tile-ai's `research/` — the journal, the-list and the
+convergence archive — is at `/notes` in every sandbox, read-write, so a
+session opened on any other repository writes its journal entry when the task
+is done instead of a session later. An entry gets that with a `:rw` suffix in
+`refs.conf`; the rest stay read-only, and the banner's `Refs:` line names what
+is writable. A `:rw` mount is forge's checkout edited in place, so keep the
+suffix to directories meant to be written by an agent.
+
 Two things differ from the laptop:
 
 - The image runs `--network=host`, so the sandbox reaches kind clusters and the
@@ -419,6 +427,16 @@ docker ps
 nix run .#go-lint -- services/server
 npm --version && java -version && helm unittest --help
 terraform version && uv --version && jq --version
+```
+
+And from a sandbox opened on any other repository, deploy-tileai say, for the
+writable notes mount and the two MemPalace changes:
+
+```bash
+touch /notes/.w && rm /notes/.w   # writable; on forge that is tiledb/repos/tile-ai/research
+command -v python3                # /usr/bin/python3 — the mempalace venv is off PATH
+mempalace status                  # still resolves, through /usr/local/bin
+sqlite3 -readonly ~/.mempalace/palace/chroma.sqlite3 'select count(*) from embeddings'
 ```
 
 The GitHub token needs two permissions that are easy to leave out: **Checks**
