@@ -1,5 +1,26 @@
 FROM node:22-bookworm-slim
 
+# Every fetch below is one lost DNS answer away from failing a build that takes
+# a quarter of an hour, and on the laptop that happened: `--rebuild` died at
+# the Docker keyring with "Could not resolve host", fifteen seconds of no reply
+# from Tailscale's resolver while the phone hotspot behind it blinked, with the
+# same lookup answering instantly before and after. apt, pip and npm retry on
+# their own. curl retries nothing unless asked, and a failed lookup does not
+# count as transient for it without --retry-all-errors.
+#
+# Asked here once, for the whole build, rather than on each of the thirteen
+# curl lines and never inside the installers that call curl themselves (uv's,
+# Claude Code's, helm-unittest's). CURL_HOME is where curl looks for its rc
+# file before $HOME, so this reaches the root steps and the `USER node` ones
+# alike. It is switched off again at the end: a curl in a session must fail
+# the way the agent expects, not sit through five retries.
+RUN install -D -m 0644 /dev/stdin /etc/curl-build/.curlrc <<'EOF'
+retry = 5
+retry-delay = 5
+retry-all-errors
+EOF
+ENV CURL_HOME=/etc/curl-build
+
 # ca-certificates is named rather than inherited: the base image marks it auto
 # and can drop it, and every curl below — and the Nix client's own fetches —
 # need a CA bundle. jq because `gh --jq` does not reach into shell pipelines.
@@ -286,6 +307,11 @@ RUN HELM_CACHE_HOME=/tmp/helm-cache \
 # and installs into the user-owned /home/node/.local so /doctor is happy.
 # Version is pinned here; bump CLAUDE_CODE_VERSION and `claude-sandbox --rebuild`.
 RUN curl -fsSL https://claude.ai/install.sh | bash -s "${CLAUDE_CODE_VERSION}"
+
+# The last fetch is done: back to curl's stock behaviour for the session. An
+# empty CURL_HOME is skipped by curl, which then looks in $HOME as usual; a
+# Dockerfile cannot unset a variable, so empty is as far as this goes.
+ENV CURL_HOME=
 
 WORKDIR /workspace
 
