@@ -172,7 +172,7 @@ RUN set -eux; \
 RUN mkdir -p /etc/nix \
     && echo 'experimental-features = nix-command flakes' > /etc/nix/nix.conf
 
-ARG CLAUDE_CODE_VERSION=2.1.280
+ARG CLAUDE_CODE_VERSION=2.1.284
 
 RUN python3 -m venv /opt/mempalace \
     && /opt/mempalace/bin/pip install --no-cache-dir --upgrade pip \
