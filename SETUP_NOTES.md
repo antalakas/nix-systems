@@ -257,6 +257,15 @@ Wayland screenshot tools: grim, slurp, satty
 - Use `templates/` for starting new projects
 - `.envrc` with `use flake` auto-activates environment on cd
 
+### Agents
+
+Claude Code runs in the Docker sandbox, `claude-sandbox` (home/common.nix,
+setup in docs/forge-install.md §8). OpenAI's Codex CLI is installed on the
+host itself, from nixpkgs, through `programs.codex` in the same file; on this
+laptop `codex login` opens the browser and that is the whole setup. Its login
+is `~/.codex/auth.json` and its config `~/.codex/config.toml`, both written by
+codex and neither managed by nix — the forge notes say why.
+
 ### Templates
 
 ```bash

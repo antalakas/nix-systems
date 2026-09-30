@@ -1,6 +1,7 @@
 # User configuration shared by every host: the CLI toolchain, git identity,
-# shell, and the Claude Code sandbox. Nothing here may depend on a graphical
-# session — desktop apps and Wayland config belong in home/desktop.nix.
+# shell, the Claude Code sandbox and the Codex CLI. Nothing here may depend on
+# a graphical session — desktop apps and Wayland config belong in
+# home/desktop.nix.
 #
 # `home.stateVersion` is deliberately absent: it records when a host was first
 # installed, so each host sets its own.
@@ -68,6 +69,22 @@
     # Node.js (npm, npx)
     nodejs_22
   ];
+
+  # OpenAI's Codex CLI, on the host rather than in the Claude sandbox: it is
+  # wanted as a second agent on the laptop and on forge, at the shell, the way
+  # `claude` is when the sandbox is not the point. nixpkgs' build is what
+  # this installs — the npm package would mean an `npm install -g` outside
+  # nix on every host, and a version nothing in this repo records.
+  #
+  # No `settings` on purpose. With any at all, home-manager owns
+  # ~/.codex/config.toml as a store symlink, and codex writes to that file
+  # itself — a directory trusted at the first prompt, the model picked in
+  # /model — so the write fails or the choice is lost on the next `nrs`.
+  # Left unset, the module installs the package and nothing else, and codex
+  # keeps its own config. What the store must not hold anyway is
+  # ~/.codex/auth.json, the login: `codex login` on a host with a browser,
+  # `codex login --device-auth` on forge — see docs/forge-install.md §8.
+  programs.codex.enable = true;
 
   programs.direnv = {
     enable = true;

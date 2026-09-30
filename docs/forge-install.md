@@ -444,6 +444,46 @@ and **Commit statuses**, read. Without them `gh pr checks` fails with "Resource
 not accessible by personal access token" while everything else works. See
 `dotfiles/claude-code/github-tokens.example`.
 
+### Codex CLI
+
+OpenAI's Codex CLI is on every host, from nixpkgs, through `programs.codex` in
+`home/common.nix` — on the host itself, not in the sandbox image, so `codex`
+is a command at forge's shell the way `claude-sandbox` is. Its version is
+whatever the flake's nixpkgs pin carries (0.145.0 at the time of writing); the
+"update available" line it prints on start is answered by `nix flake update`,
+not by the `npm install -g` it suggests.
+
+What nix does not provide is the login. `~/.codex/auth.json` holds the tokens
+and is a password: not in the repo, not in a paste. This box has no browser,
+so the ordinary `codex login` — which opens one and listens on
+`localhost:1455` for the callback — cannot complete here on its own. Three
+ways that work, in order of preference:
+
+```bash
+# 1. Device code: prints a code and a URL, approve it from the laptop's browser.
+codex login --device-auth
+
+# 2. Forward the callback port, then the browser flow runs on the laptop.
+ssh -L 1455:localhost:1455 forge     # on the laptop
+codex login                          # in that session; open the URL it prints locally
+
+# 3. Copy a login made on the laptop.
+scp ~/.codex/auth.json forge:.codex/auth.json && ssh forge chmod 600 .codex/auth.json
+```
+
+Device auth is refused with "contact your workspace admin to enable device
+code authentication" when the account is a Business or Enterprise workspace
+that has not switched it on; a personal plan is not gated. `codex login
+status` says which account is in use.
+
+`home/common.nix` deliberately sets no `programs.codex.settings`. Codex writes
+`~/.codex/config.toml` itself — every directory you trust at its first prompt
+lands there as a `[projects."…"]` entry, and so does the model picked in
+`/model` — and with any settings declared, home-manager would make that file a
+read-only store symlink, so the trust prompt could not persist and the next
+`nrs` would drop whatever codex had written. Model, `approval_policy` and
+`sandbox_mode` go in that file by hand, per host.
+
 ## 9. Kubernetes
 
 ```bash
