@@ -52,6 +52,20 @@ in
   # Enable networking
   networking.networkmanager.enable = true;
 
+  # systemd-resolved instead of one shared /etc/resolv.conf. With tiledb-wg and
+  # Tailscale both up, each wanted to own that file; resolved keeps a DNS server
+  # per interface and routes queries by domain, so MagicDNS answers *.ts.net on
+  # tailscale0 and TileDB's resolver answers the domains tiledb-wg claims (its
+  # dns-search, in wireguard-secrets.nix). Tailscale detects resolved on its own.
+  # NetworkManager is told explicitly rather than left to auto-detect the stub.
+  # mDNS stays with avahi, which the printer setup below relies on; resolved
+  # answering mDNS too would mean two responders on the same port.
+  services.resolved = {
+    enable = true;
+    settings.Resolve.MulticastDNS = false;
+  };
+  networking.networkmanager.dns = "systemd-resolved";
+
   # Time zone, locales, the andreas user, zsh, docker, tailscale, nix settings
   # and the base CLI packages all live in modules/common.nix.
 
