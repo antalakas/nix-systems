@@ -63,6 +63,21 @@ in
             blinking = "On";
           };
           blink_interval = 750;
+          thickness = 0.25; # default 0.15 is a hairline at this font size
+        };
+
+        # Overrides the theme's cursor colour, which wins over the imported file.
+        # rose_pine's is #524f67, a dim grey that all but vanishes as a thin beam
+        # — worse still on the ssh tints from home/ssh-tint.nix, which are all
+        # dark and near it in brightness. A bright gold reads against the local
+        # theme and every tint alike, so it is fixed here rather than per theme.
+        colors.cursor = {
+          cursor = "#f6c177";
+          text = "CellBackground";
+        };
+        colors.vi_mode_cursor = {
+          cursor = "#f6c177";
+          text = "CellBackground";
         };
 
         env = {
