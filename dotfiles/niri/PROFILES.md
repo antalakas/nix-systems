@@ -20,7 +20,7 @@ blocks, startup lines and layout rules.
 - eDP-1: Laptop (bottom center, under DP-6)
 - DP-6: 27" horizontal center (top) – A
 - DP-2: 27" vertical right – B
-- DP-8: 25" vertical left – C
+- DP-1: 25" vertical left – C (Dell U2520D on the laptop's HDMI port; was DP-8 when daisy-chained)
 
 Layout: **C (left) – A (center) – B (right)** + laptop below A
 
@@ -98,7 +98,7 @@ niri msg action load-config-file   # or Mod+Shift+C, or log out/in
 ```
 ┌────┐ ┌────────────────┐ ┌────┐
 │    │ │   DP-6 (27")   │ │    │
-│DP-8│ │   Horizontal   │ │DP-2│ (27" vertical)
+│DP-1│ │   Horizontal   │ │DP-2│ (27" vertical)
 │25" │ └────────────────┘ │27" │
 │    │   ┌──────────┐     │    │
 └────┘   │  Laptop  │     └────┘

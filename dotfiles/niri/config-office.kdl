@@ -81,8 +81,14 @@ input {
 
 // Outputs in spatial order (left-to-right, top-to-bottom) for correct adjacency
 
-// C: DP-8 - 25" vertical LEFT (2560x1440 rotated = 1440x2560 logical)
-output "DP-8" {
+// C: DP-1 - 25" vertical LEFT (2560x1440 rotated = 1440x2560 logical)
+//
+// Dell U2520D, plugged straight into the laptop's HDMI port. It used to be
+// daisy-chained over DisplayPort MST, which made it DP-8. The connector is a
+// DisplayPort one despite the HDMI cable (as with the HP in config-igo.kdl).
+// niri does not warn about an output block that matches nothing; it just
+// auto-places the panel, so check `niri msg outputs` if the layout looks wrong.
+output "DP-1" {
     scale 1.0
     transform "270"
     position x=-1440 y=0
