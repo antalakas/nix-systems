@@ -11,7 +11,15 @@
 
   # The cluster this laptop can reach, offered read-only to the forge sandbox
   # (docs/k8s-mcp.md). Set `impersonate` once the view account exists.
-  my.k8sMcp.enable = true;
+  my.k8sMcp = {
+    enable = true;
+    context = "tiledb-dev-eks";
+    namespace = "tileai";
+    impersonate = "system:serviceaccount:tileai:claude-view";
+    awsVaultProfile = "dev-admin";
+    awsSessionDuration = "12h";
+    ykmanOathCredential = "AWS-Primary";
+  };
 
   # This should match your NixOS version
   home.stateVersion = "24.11";
