@@ -7,7 +7,19 @@
   # only the theme below is host-specific. home/calendar.nix is the Google
   # calendar behind the bar's calendar module — khal, vdirsyncer and the sync
   # timer; the OAuth login it needs is a one-off by hand (docs/google-calendar.md).
-  imports = [ ../../home/common.nix ../../home/alacritty.nix ../../home/calendar.nix ];
+  imports = [ ../../home/common.nix ../../home/alacritty.nix ../../home/calendar.nix ../../home/k8s-mcp.nix ];
+
+  # The cluster this laptop can reach, offered read-only to the forge sandbox
+  # (docs/k8s-mcp.md). Set `impersonate` once the view account exists.
+  my.k8sMcp = {
+    enable = true;
+    context = "tiledb-dev-eks";
+    namespace = "tileai";
+    impersonate = "system:serviceaccount:tileai:claude-view";
+    awsVaultProfile = "dev-admin";
+    awsSessionDuration = "12h";
+    ykmanOathCredential = "AWS-Primary";
+  };
 
   # This should match your NixOS version
   home.stateVersion = "24.11";
