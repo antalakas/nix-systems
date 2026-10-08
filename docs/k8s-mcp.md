@@ -32,8 +32,8 @@ Checked end to end on 2026-10-08 against a kind cluster: logs and events in
    own identity to act as it if you are not already a cluster admin:
 
    ```sh
-   kubectl -n tile-ai create serviceaccount claude-view
-   kubectl -n tile-ai create rolebinding claude-view --clusterrole=view --serviceaccount=tile-ai:claude-view
+   kubectl -n tileai create serviceaccount claude-view
+   kubectl -n tileai create rolebinding claude-view --clusterrole=view --serviceaccount=tileai:claude-view
    ```
 
    The built-in `view` role reads pods, logs, events and deployments, never
@@ -44,9 +44,9 @@ Checked end to end on 2026-10-08 against a kind cluster: logs and events in
    ```nix
    my.k8sMcp = {
      enable = true;
-     impersonate = "system:serviceaccount:tile-ai:claude-view";
+     impersonate = "system:serviceaccount:tileai:claude-view";
      # context = "...";          # default: kubectl's current context at `up`
-     # awsVaultProfile = "...";  # only if the kubeconfig runs plain `aws eks get-token`
+     # awsVaultProfile = "...";  # see "Where the AWS session comes from"
    };
    ```
 
@@ -57,12 +57,30 @@ Checked end to end on 2026-10-08 against a kind cluster: logs and events in
    claude mcp add --transport http -s user k8s http://127.0.0.1:8090/mcp
    ```
 
+## Where the AWS session comes from
+
+The personal user's `EnforceMFA` deny means the kubeconfig's `aws eks
+get-token --role ...` only works from an MFA session. Two ways to give the
+server one:
+
+- **Inherit it (default).** Do the MFA step (`avx` in tiledb-infra's app-qa
+  shell, an `aws-vault exec` subshell), check `kubectl get pods` works there,
+  and run `k8s-mcp up` from that same shell. The server keeps that session's
+  keys, so it lasts as long as the session does.
+- **aws-vault.** Set `awsVaultProfile` to the profile that shell uses;
+  `k8s-mcp up` then asks for the code itself. With aws-vault's ykman prompt,
+  set `ykmanOathCredential` to the YubiKey account's name (`ykman oath
+  accounts list`) unless it is the full MFA ARN. Check first that
+  `aws-vault exec <profile> -- kubectl get pods` works.
+
+`k8s-mcp status` shows the expiry when aws-vault set it.
+
 ## Daily use
 
 On the laptop:
 
 ```sh
-k8s-mcp up       # MFA prompt if awsVaultProfile is set; then server + tunnel
+k8s-mcp up       # from the MFA shell, or prompts via awsVaultProfile; then server + tunnel
 k8s-mcp status   # what runs, which context and identity, when AWS expires
 k8s-mcp logs     # server log
 k8s-mcp down

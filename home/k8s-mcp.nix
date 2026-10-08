@@ -77,12 +77,19 @@ let
 
         (
           ${lib.optionalString (cfg.awsVaultProfile != null) ''
+            ${lib.optionalString (cfg.ykmanOathCredential != null) ''
+              export YKMAN_OATH_CREDENTIAL_NAME=${lib.escapeShellArg cfg.ykmanOathCredential}
+            ''}
             creds="$(aws-vault export --format=env --duration=${lib.escapeShellArg cfg.awsSessionDuration} ${lib.escapeShellArg cfg.awsVaultProfile})"
             while IFS= read -r line; do
               [[ -n "$line" ]] && export "''${line?}"
-              [[ "$line" == AWS_CREDENTIAL_EXPIRATION=* ]] && echo "''${line#*=}" > "$state/expires"
             done <<< "$creds"
           ''}
+          # aws-vault sets this in both cases: its own `export`, or the
+          # `aws-vault exec` shell the session was inherited from.
+          if [[ -n "''${AWS_CREDENTIAL_EXPIRATION:-}" ]]; then
+            echo "$AWS_CREDENTIAL_EXPIRATION" > "$state/expires"
+          fi
           if ! kubectl --kubeconfig "$kubeconfig" get pods --request-timeout=15s > /dev/null; then
             echo "k8s-mcp: the cluster refused the pinned kubeconfig; not starting" >&2
             exit 1
@@ -154,7 +161,7 @@ in
 
     namespace = lib.mkOption {
       type = lib.types.str;
-      default = "tile-ai";
+      default = "tileai";
       description = ''
         Default namespace in the served kubeconfig. A default, not a limit:
         only `impersonate` and the cluster role behind it keep the server out
@@ -165,7 +172,7 @@ in
     impersonate = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "system:serviceaccount:tile-ai:claude-view";
+      example = "system:serviceaccount:tileai:claude-view";
       description = ''
         Identity the server acts as, through Kubernetes impersonation. Your own
         login needs the `impersonate` permission. null serves everything your
@@ -177,9 +184,20 @@ in
       type = lib.types.nullOr lib.types.str;
       default = null;
       description = ''
-        aws-vault profile whose session the server runs with, for a kubeconfig
-        that calls plain `aws eks get-token`. Leave null when the kubeconfig
-        gets its credentials some other way.
+        aws-vault profile whose session the server runs with, prompting for
+        MFA at `k8s-mcp up`. null: the server inherits the AWS session of the
+        shell `k8s-mcp up` runs in, so run it where `kubectl get pods` already
+        works, such as an `aws-vault exec` shell.
+      '';
+    };
+
+    ykmanOathCredential = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "AWS-Primary";
+      description = ''
+        YubiKey OATH account aws-vault's ykman prompt reads the MFA code from.
+        null: aws-vault looks for one named after the full mfa_serial ARN.
       '';
     };
 
