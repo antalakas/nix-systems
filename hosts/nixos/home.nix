@@ -7,7 +7,7 @@
   # only the theme below is host-specific. home/calendar.nix is the Google
   # calendar behind the bar's calendar module — khal, vdirsyncer and the sync
   # timer; the OAuth login it needs is a one-off by hand (docs/google-calendar.md).
-  imports = [ ../../home/common.nix ../../home/alacritty.nix ../../home/calendar.nix ../../home/k8s-mcp.nix ];
+  imports = [ ../../home/common.nix ../../home/alacritty.nix ../../home/calendar.nix ../../home/k8s-mcp.nix ../../home/tileai-mcp.nix ];
 
   # The cluster this laptop can reach, offered read-only to the forge sandbox
   # (docs/k8s-mcp.md). Set `impersonate` once the view account exists.
@@ -19,6 +19,14 @@
     awsVaultProfile = "dev-admin";
     awsSessionDuration = "12h";
     ykmanOathCredential = "AWS-Primary";
+  };
+
+  # The tile.ai API on dev as MCP tools for the forge sandbox, acting as you
+  # with no DELETE (docs/tileai-mcp.md).
+  my.tileaiMcp = {
+    enable = true;
+    baseUrl = "https://api.dev.tile.ai/v1";
+    specFile = "/mnt/endeavouros/home/andreas/workspace/tiledb/repos/tile-ai/services/server/openapi/v1/build/spec/openapi.yaml";
   };
 
   # This should match your NixOS version
