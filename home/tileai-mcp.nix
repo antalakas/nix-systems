@@ -23,7 +23,6 @@ let
       port=${toString cfg.port}
       token=${lib.escapeShellArg cfg.tokenFile}
       spec=${lib.escapeShellArg cfg.specFile}
-      token="''${token/#\~/$HOME}"
 
       # Kill only what we started: a pid file can outlive its process and the
       # number be reused.
@@ -136,7 +135,8 @@ in
 
     tokenFile = lib.mkOption {
       type = lib.types.str;
-      default = "~/.config/tileai-mcp/token";
+      default = "${config.xdg.configHome}/tileai-mcp/token";
+      defaultText = lib.literalExpression ''"''${config.xdg.configHome}/tileai-mcp/token"'';
       description = "File holding the API token, mode 600. The server refuses a file others can read.";
     };
 
