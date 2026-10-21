@@ -77,7 +77,9 @@ output "eDP-1" {
 }
 
 // 32 inch Dell U3225QE - above the laptop, centered
-output "DP-5" {
+// Matched by make/model/serial, not connector: the dock hands out DP-N
+// numbers in whatever order the monitors come up.
+output "Dell Inc. DELL U3225QE 27S3B34" {
     scale 1.25
     transform "normal"
     // Position above laptop: negative y moves up
@@ -87,7 +89,7 @@ output "DP-5" {
 }
 
 // 27 inch Dell P2725QE - on the right of both laptop and 32" monitor, rotated 90 degrees right
-output "DP-4" {
+output "Dell Inc. DELL P2725QE D83TS94" {
     scale 1.5
     transform "270"  // Rotate 90 degrees clockwise (right)
     // Position: top-left corner next to top-right of 32" monitor, 100 pixels down
@@ -270,7 +272,7 @@ spawn-sh-at-startup "sleep 2 && waybar --config /home/andreas/.config/waybar/con
 spawn-at-startup "nm-applet"
 
 // Wallpaper on 32" main monitor and laptop
-spawn-sh-at-startup "swaybg -o DP-5 -i ~/.config/wallpapers/microgpt.png -m fill & swaybg -o eDP-1 -i ~/.config/wallpapers/microgpt.png -m fill"
+spawn-sh-at-startup "swaybg -o 'Dell Inc. DELL U3225QE 27S3B34' -i ~/.config/wallpapers/microgpt.png -m fill & swaybg -o eDP-1 -i ~/.config/wallpapers/microgpt.png -m fill"
 
 // Startup apps with specific layouts
 spawn-at-startup "slack"
@@ -420,55 +422,55 @@ window-rule {
     default-column-width { proportion 1.0; }
 }
 
-// WS 1: Cursor on 32" monitor (DP-5)
+// WS 1: Cursor on 32" monitor (U3225QE)
 window-rule {
     match app-id="^code-url-handler$|^cursor$"
-    open-on-output "DP-5"
+    open-on-output "Dell Inc. DELL U3225QE 27S3B34"
     open-on-workspace "1"
     default-column-width { proportion 1.0; }
 }
 
-// WS 1: Logseq on 27" vertical (DP-4) - top position
+// WS 1: Logseq on 27" vertical (P2725QE) - top position
 window-rule {
     match app-id="^logseq$"
-    open-on-output "DP-4"
+    open-on-output "Dell Inc. DELL P2725QE D83TS94"
     open-on-workspace "1"
 }
 
-// WS 1: Terminal 1 on 27" vertical (DP-4) - middle position
+// WS 1: Terminal 1 on 27" vertical (P2725QE) - middle position
 window-rule {
     match app-id="^Alacritty$" title="^Terminal 1$"
-    open-on-output "DP-4"
+    open-on-output "Dell Inc. DELL P2725QE D83TS94"
     open-on-workspace "1"
 }
 
-// WS 1: Terminal 2 on 27" vertical (DP-4) - bottom position
+// WS 1: Terminal 2 on 27" vertical (P2725QE) - bottom position
 window-rule {
     match app-id="^Alacritty$" title="^Terminal 2$"
-    open-on-output "DP-4"
+    open-on-output "Dell Inc. DELL P2725QE D83TS94"
     open-on-workspace "1"
 }
 
-// WS 2: Brave TileDB profile on 32" monitor (DP-5)
+// WS 2: Brave TileDB profile on 32" monitor (U3225QE)
 window-rule {
     match app-id="^brave-tiledb$"
-    open-on-output "DP-5"
+    open-on-output "Dell Inc. DELL U3225QE 27S3B34"
     open-on-workspace "2"
     default-column-width { proportion 1.0; }
 }
 
-// WS 2: Brave Andreas profile on 27" vertical (DP-4)
+// WS 2: Brave Andreas profile on 27" vertical (P2725QE)
 window-rule {
     match app-id="^brave-andreas$"
-    open-on-output "DP-4"
+    open-on-output "Dell Inc. DELL P2725QE D83TS94"
     open-on-workspace "2"
     default-column-width { proportion 1.0; }
 }
 
-// WS 2: Tutanota on 27" vertical (DP-4)
+// WS 2: Tutanota on 27" vertical (P2725QE)
 window-rule {
     match app-id="^tutanota-desktop$"
-    open-on-output "DP-4"
+    open-on-output "Dell Inc. DELL P2725QE D83TS94"
     open-on-workspace "2"
 }
 
