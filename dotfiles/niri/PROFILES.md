@@ -13,8 +13,8 @@ blocks, startup lines and layout rules.
 
 ### `home` - 3 Monitors — *the main laptop*
 - eDP-1: Laptop (bottom, 1920x1200)
-- DP-5: 32" horizontal (top center, 3072x1728)
-- DP-4: 27" vertical right (1440x2560)
+- Dell U3225QE: 32" horizontal (top center, 3072x1728)
+- Dell P2725QE: 27" vertical right (1440x2560)
 
 ### `office` - 4 Monitors — *the main laptop*
 - eDP-1: Laptop (bottom center, under DP-6)
