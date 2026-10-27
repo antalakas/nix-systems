@@ -21,13 +21,9 @@
     ykmanOathCredential = "AWS-Primary";
   };
 
-  # The tile.ai API on dev as MCP tools for the forge sandbox, acting as you
-  # with no DELETE (docs/tileai-mcp.md).
-  my.tileaiMcp = {
-    enable = true;
-    baseUrl = "https://api.dev.tile.ai/v1";
-    specFile = "/mnt/endeavouros/home/andreas/workspace/tiledb/repos/tile-ai/services/server/openapi/v1/build/spec/openapi.yaml";
-  };
+  # tile-ai's MCP server against dev, for the forge sandbox; the token is the
+  # sandbox's, sent with each request (docs/tileai-mcp.md).
+  my.tileaiMcp.enable = true;
 
   # This should match your NixOS version
   home.stateVersion = "24.11";

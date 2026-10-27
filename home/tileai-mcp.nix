@@ -1,28 +1,26 @@
-# The tile.ai REST API as MCP tools on this machine, tunnelled to forge so the
-# Claude Code sandbox there can list, change and query tiles as you. The API
-# token never leaves this machine: the sandbox only gets an HTTP endpoint on
-# forge's loopback. No DELETE is ever served. Setup and limits:
-# docs/tileai-mcp.md.
+# tile-ai's MCP server (services/mcp in the tile-ai flake) on this machine,
+# tunnelled to forge so the Claude Code sandbox there can list, change and
+# query tiles on dev. This side holds no token: the server takes the caller's
+# from the Authorization header of every request, so the token lives in the
+# sandbox's `claude mcp add`. Setup and checks: docs/tileai-mcp.md.
 #
 # Run by hand (`tileai-mcp up`), like k8s-mcp, so it is up only when you mean
 # it to be.
 
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 let
   cfg = config.my.tileaiMcp;
-  server = pkgs.callPackage ../pkgs/tileai-mcp/package.nix { };
+  server = inputs.tile-ai.packages.${pkgs.stdenv.hostPlatform.system}.tileai-mcp;
 
   tileai-mcp = pkgs.writeShellApplication {
     name = "tileai-mcp";
-    runtimeInputs = with pkgs; [ openssh curl coreutils procps util-linux jq ];
+    runtimeInputs = with pkgs; [ openssh curl coreutils procps util-linux ];
     text = ''
       state="''${XDG_STATE_HOME:-$HOME/.local/state}/tileai-mcp"
       umask 077
       mkdir -p "$state"
       port=${toString cfg.port}
-      token=${lib.escapeShellArg cfg.tokenFile}
-      spec=${lib.escapeShellArg cfg.specFile}
 
       # Kill only what we started: a pid file can outlive its process and the
       # number be reused.
@@ -43,41 +41,39 @@ let
           [[ "$(ps -p "$(cat "$state/$name.pid")" -o comm= 2>/dev/null || true)" == "$comm" ]]
       }
 
-      # Ask the running server who it acts as; the token stays inside it.
-      whoami() {
-        curl -s --max-time 20 "http://127.0.0.1:$port/mcp" \
+      # The server refuses a request with no token; 401 means it is up and
+      # guarding. Anything else (000 = no answer) is not.
+      no_token_code() {
+        curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X POST \
           -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-          -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_self_user","arguments":{}}}' |
-          jq -r '.result.content[0].text // "no answer"'
+          -d '{}' "http://127.0.0.1:$port/mcp" || true
       }
 
       up() {
         stop tunnel ssh
         stop server tileai-mcp
-        [[ -f "$token" ]] || { echo "tileai-mcp: no token at $token (docs/tileai-mcp.md)" >&2; exit 1; }
-        [[ -f "$spec" ]] || { echo "tileai-mcp: no spec at $spec; pull tile-ai" >&2; exit 1; }
 
-        nohup setsid ${lib.getExe server} \
-          -spec "$spec" -base-url ${lib.escapeShellArg cfg.baseUrl} -token-file "$token" \
-          -listen "127.0.0.1:$port" ${lib.optionalString cfg.readOnly "-read-only"} \
+        TILE_API_URL=${lib.escapeShellArg cfg.apiUrl} \
+        TILEAI_MCP_HOST=127.0.0.1 \
+        TILEAI_MCP_PORT="$port" \
+          nohup setsid ${lib.getExe' server "tileai-mcp"} \
           < /dev/null > "$state/server.log" 2>&1 &
         echo $! > "$state/server.pid"
 
+        local code=000
         for _ in $(seq 40); do
-          curl -s -o /dev/null "http://127.0.0.1:$port/mcp" && break
+          code="$(no_token_code)"
+          [[ "$code" != 000 ]] && break
           running server tileai-mcp || { tail -n 20 "$state/server.log" >&2; exit 1; }
           sleep 0.25
         done
-
-        local self
-        self="$(whoami)"
-        if [[ "$self" != "HTTP 200"* ]]; then
-          echo "tileai-mcp: the API refused or did not answer; not tunnelling:" >&2
-          echo "$self" | head -n 5 >&2
+        echo "tileai-mcp: server on 127.0.0.1:$port (no-token check: $code, want 401)"
+        if [[ "$code" != 401 ]]; then
+          echo "tileai-mcp: not refusing a request without a token; not tunnelling" >&2
+          tail -n 20 "$state/server.log" >&2
           stop server tileai-mcp
           exit 1
         fi
-        echo "tileai-mcp: server on 127.0.0.1:$port, acting as $(echo "$self" | tail -n +2 | jq -r '.username // .email // "?"')"
 
         ${lib.optionalString (cfg.forwardTo != null) ''
           nohup setsid ssh -N \
@@ -101,7 +97,7 @@ let
         ${lib.optionalString (cfg.forwardTo != null) ''
           if running tunnel ssh; then echo "tunnel: running"; else echo "tunnel: stopped"; fi
         ''}
-        echo "api: ${cfg.baseUrl}${lib.optionalString cfg.readOnly " (read-only)"}"
+        echo "api: ${cfg.apiUrl}"
         return 0
       }
 
@@ -117,33 +113,12 @@ let
 in
 {
   options.my.tileaiMcp = {
-    enable = lib.mkEnableOption "the tile.ai REST API as MCP tools, tunnelled to forge";
+    enable = lib.mkEnableOption "tile-ai's MCP server, tunnelled to forge";
 
-    baseUrl = lib.mkOption {
+    apiUrl = lib.mkOption {
       type = lib.types.str;
-      example = "https://api.dev.tile.ai/v1";
-      description = "API base URL, including /v1.";
-    };
-
-    specFile = lib.mkOption {
-      type = lib.types.str;
-      description = ''
-        tile-ai's v1 OpenAPI spec, read at `up`, so tools follow the checkout:
-        services/server/openapi/v1/build/spec/openapi.yaml in a tile-ai clone.
-      '';
-    };
-
-    tokenFile = lib.mkOption {
-      type = lib.types.str;
-      default = "${config.xdg.configHome}/tileai-mcp/token";
-      defaultText = lib.literalExpression ''"''${config.xdg.configHome}/tileai-mcp/token"'';
-      description = "File holding the API token, mode 600. The server refuses a file others can read.";
-    };
-
-    readOnly = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Serve GET operations only.";
+      default = "https://api.dev.tile.ai";
+      description = "tile.ai API the server talks to (TILE_API_URL), without /v1.";
     };
 
     port = lib.mkOption {
