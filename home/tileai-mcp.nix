@@ -21,24 +21,26 @@ let
       umask 077
       mkdir -p "$state"
       port=${toString cfg.port}
+      srv=${server}
+      tunnel="-R 127.0.0.1:$port:127.0.0.1:$port"
 
       # Kill only what we started: a pid file can outlive its process and the
-      # number be reused.
+      # number be reused. Match on the command line, not the process name:
+      # the server's name depends on how tile-ai wraps it, its store path
+      # does not.
+      running() {
+        local name="$1" match="$2"
+        [[ -f "$state/$name.pid" ]] &&
+          [[ "$(ps -p "$(cat "$state/$name.pid")" -o args= 2>/dev/null || true)" == *"$match"* ]]
+      }
+
       stop() {
-        local name="$1" comm="$2" pid
-        [[ -f "$state/$name.pid" ]] || return 0
-        pid="$(cat "$state/$name.pid")"
-        if [[ "$(ps -p "$pid" -o comm= 2>/dev/null || true)" == "$comm" ]]; then
-          kill "$pid"
+        local name="$1" match="$2"
+        if running "$name" "$match"; then
+          kill "$(cat "$state/$name.pid")"
           echo "tileai-mcp: stopped $name"
         fi
         rm -f "$state/$name.pid"
-      }
-
-      running() {
-        local name="$1" comm="$2"
-        [[ -f "$state/$name.pid" ]] &&
-          [[ "$(ps -p "$(cat "$state/$name.pid")" -o comm= 2>/dev/null || true)" == "$comm" ]]
       }
 
       # The server refuses a request with no token; 401 means it is up and
@@ -50,8 +52,8 @@ let
       }
 
       up() {
-        stop tunnel ssh
-        stop server tileai-mcp
+        stop tunnel "$tunnel"
+        stop server "$srv"
 
         TILE_API_URL=${lib.escapeShellArg cfg.apiUrl} \
         TILEAI_MCP_HOST=127.0.0.1 \
@@ -64,14 +66,18 @@ let
         for _ in $(seq 40); do
           code="$(no_token_code)"
           [[ "$code" != 000 ]] && break
-          running server tileai-mcp || { tail -n 20 "$state/server.log" >&2; exit 1; }
+          if ! running server "$srv"; then
+            echo "tileai-mcp: the server exited at start; its log:" >&2
+            tail -n 20 "$state/server.log" >&2
+            exit 1
+          fi
           sleep 0.25
         done
         echo "tileai-mcp: server on 127.0.0.1:$port (no-token check: $code, want 401)"
         if [[ "$code" != 401 ]]; then
           echo "tileai-mcp: not refusing a request without a token; not tunnelling" >&2
           tail -n 20 "$state/server.log" >&2
-          stop server tileai-mcp
+          stop server "$srv"
           exit 1
         fi
 
@@ -82,7 +88,7 @@ let
             < /dev/null > "$state/tunnel.log" 2>&1 &
           echo $! > "$state/tunnel.pid"
           sleep 3
-          if ! running tunnel ssh; then
+          if ! running tunnel "$tunnel"; then
             echo "tileai-mcp: tunnel to ${cfg.forwardTo} failed:" >&2
             cat "$state/tunnel.log" >&2
             exit 1
@@ -93,9 +99,9 @@ let
       }
 
       status() {
-        if running server tileai-mcp; then echo "server: running"; else echo "server: stopped"; fi
+        if running server "$srv"; then echo "server: running"; else echo "server: stopped"; fi
         ${lib.optionalString (cfg.forwardTo != null) ''
-          if running tunnel ssh; then echo "tunnel: running"; else echo "tunnel: stopped"; fi
+          if running tunnel "$tunnel"; then echo "tunnel: running"; else echo "tunnel: stopped"; fi
         ''}
         echo "api: ${cfg.apiUrl}"
         return 0
@@ -103,7 +109,7 @@ let
 
       case "''${1:-}" in
         up) up ;;
-        down) stop tunnel ssh; stop server tileai-mcp ;;
+        down) stop tunnel "$tunnel"; stop server "$srv" ;;
         status) status ;;
         logs) tail -f "$state/server.log" ;;
         *) echo "usage: tileai-mcp up|down|status|logs" >&2; exit 2 ;;
