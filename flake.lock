@@ -200,17 +200,16 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1793036296,
-        "narHash": "sha256-umt3ivE/ZZrPGF3m1vGaUrdgr0UFXwQTTfms5mIDc40=",
+        "lastModified": 1793126974,
+        "narHash": "sha256-hWMI8dQ26z1XO1yYGkfE0DVClZzPf/v46UAmpGD3f6I=",
         "owner": "TileDB-Inc",
         "repo": "tile-ai",
-        "rev": "c6f85abec308709ceaca12f69a91486c51cb5853",
+        "rev": "12dd001d42d75c3e4a562891b3c3da670ee7b074",
         "type": "github"
       },
       "original": {
         "owner": "TileDB-Inc",
         "repo": "tile-ai",
-        "rev": "c6f85abec308709ceaca12f69a91486c51cb5853",
         "type": "github"
       }
     }
