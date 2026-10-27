@@ -4,7 +4,8 @@
 dev as MCP tools: organizations, collections and their contents, tile search,
 tiles and their metadata, templates, tile operations, and registration into a
 collection. The server is tile-ai's own (`services/mcp`), taken from the
-tile-ai flake input, pinned in `flake.nix`. It runs on the laptop, which is on
+tile-ai flake input, which follows tile-ai's main at the commit in
+`flake.lock`. It runs on the laptop, which is on
 the company VPN, and an ssh tunnel puts its port on forge's loopback, the same
 way as [k8s-mcp](k8s-mcp.md).
 
@@ -44,8 +45,9 @@ HTTP code. It wants 401, which means the server is up and refusing callers
 without a token. On anything else it stops the server and does not tunnel.
 Then it tunnels port 8091 to forge. `tileai-mcp status`, `logs`, `down`.
 
-To move to a newer server, bump the `tile-ai` rev in `flake.nix`, then
-`nix flake lock` and `nrs`.
+To move to a newer server (new tools merged on tile-ai's main):
+`tileai-mcp down`, `nix flake update tile-ai`, commit `flake.lock`, `nrs`,
+`tileai-mcp up`, then reconnect `tileai` with `/mcp` in the forge sandbox.
 
 ## Checks after a change
 
