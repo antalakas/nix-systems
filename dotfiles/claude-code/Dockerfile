@@ -237,7 +237,7 @@ RUN set -eux; \
 RUN mkdir -p /etc/nix \
     && echo 'experimental-features = nix-command flakes' > /etc/nix/nix.conf
 
-ARG CLAUDE_CODE_VERSION=2.1.284
+ARG CLAUDE_CODE_VERSION=2.1.312
 
 # MemPalace in its own venv, reached through symlinks rather than by putting
 # the venv's bin on PATH. It was on PATH, ahead of /usr/local/bin and /usr/bin,
