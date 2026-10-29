@@ -358,6 +358,41 @@ Two things differ from the laptop:
   home.sessionVariables.MEMPALACE_MINE_CPUS = "12";
   ```
 
+### What the image carries
+
+Everything below is in `dotfiles/claude-code/Dockerfile`, on Debian bookworm.
+A repository's flake devShell, when it has one, goes ahead of these on PATH
+(see the next section), so these are what a workspace without one gets.
+
+| | what | where state lives |
+|---|---|---|
+| Claude Code | pinned by `CLAUDE_CODE_VERSION` (2.1.312) | profile's `.claude/` |
+| GitHub | `gh`, git over HTTPS with the owner's token | — |
+| Cloud and k8s | AWS CLI v2, kubectl, helm with helm-unittest, kind, terraform | `~/.kube`, `~/.aws` from the host |
+| Docker | client, compose, buildx — for the host's daemon | — |
+| Node | node 22, npm 11 | — |
+| Python | python3 3.11, uv | `~/.cache/uv` |
+| Rust | stable through rustup, with clippy and rustfmt; maturin | `~/.cache/cargo` |
+| C | build-essential, pkg-config, OpenSSL, curl and XML headers | — |
+| R | 4.5 from CRAN's Debian repository, with r-base-dev | `~/.cache/R/library` |
+| Go | none in the image; from a flake | `~/.cache/go`, `~/.cache/go-build` |
+| PostgreSQL | 16 with pgvector, binaries only — `initdb` a cluster in userspace | wherever it is initdb'd |
+| Java | headless JRE, for openapi-generator | — |
+| MemPalace | in its own venv, off PATH but for its commands | the profile's mempalace volume |
+
+`~/.cache` is the profile's cache volume, so what lands there — the crate
+registry, R packages, uv's downloads, Go's module cache — outlives the
+container. The toolchains themselves are in the image and change only with
+`--rebuild`; rustup's live in `/usr/local/rustup`, owned by the session user,
+so `rustup component add` works for the life of a container.
+
+R installs packages as prebuilt binaries from Posit's package manager, so
+`install.packages()` takes seconds. A package with no binary there builds from
+source, and may need a `-dev` library the image does not have.
+
+To move Claude Code, bump `CLAUDE_CODE_VERSION` and rebuild. The image turns
+the auto-updater off, so a running sandbox never updates itself.
+
 ### What it borrows from the host
 
 Two things the image does not carry and takes from forge at launch when they
@@ -412,7 +447,7 @@ home-manager has put the new Dockerfile and launcher in place:
 
 ```bash
 nrs                       # new Dockerfile into ~/.config, new launcher into ~/.local/bin
-claude-sandbox --rebuild  # slow: Java, terraform, the docker CLI, uv, kind, helm-unittest
+claude-sandbox --rebuild  # slow: Java, terraform, the docker CLI, uv, Rust, R, kind, helm-unittest
 ```
 
 Then, in a sandbox opened on tile-ai — the devShell and the GitHub token both
@@ -456,6 +491,20 @@ command -v python3                # /usr/bin/python3 — the mempalace venv is o
 mempalace status                  # still resolves, through /usr/local/bin
 sqlite3 -readonly ~/.mempalace/palace/chroma.sqlite3 'select count(*) from embeddings'
 ```
+
+And the Rust, maturin and R toolchains, from any sandbox, in a scratch
+directory:
+
+```bash
+claude --version                  # the pinned CLAUDE_CODE_VERSION
+cargo --version && cargo clippy --version && maturin --version
+cd /tmp && maturin new -b pyo3 demo && cd demo && maturin build --release
+uv venv -q && uv pip install -q target/wheels/*.whl && .venv/bin/python -c 'import demo; print(demo.sum_as_string(2, 3))'
+Rscript -e 'install.packages("jsonlite"); library(jsonlite); .libPaths()[1]'   # ~/.cache/R/library
+```
+
+Checked in a test build 2026-10-29: the pyo3 wheel built and imported, and
+`curl` and `jsonlite` installed from binaries in 6 s.
 
 The GitHub token needs two permissions that are easy to leave out: **Checks**
 and **Commit statuses**, read. Without them `gh pr checks` fails with "Resource
