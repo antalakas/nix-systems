@@ -8,9 +8,9 @@ FROM node:22-bookworm-slim
 # their own. curl retries nothing unless asked, and a failed lookup does not
 # count as transient for it without --retry-all-errors.
 #
-# Asked here once, for the whole build, rather than on each of the thirteen
+# Asked here once, for the whole build, rather than on each of the fourteen
 # curl lines and never inside the installers that call curl themselves (uv's,
-# Claude Code's, helm-unittest's). CURL_HOME is where curl looks for its rc
+# rustup's, Claude Code's, helm-unittest's). CURL_HOME is where curl looks for its rc
 # file before $HOME, so this reaches the root steps and the `USER node` ones
 # alike. It is switched off again at the end: a curl in a session must fail
 # the way the agent expects, not sit through five retries.
@@ -124,6 +124,33 @@ RUN set -eux; \
 # outlive the container.
 RUN curl -LsSf https://astral.sh/uv/install.sh \
     | env UV_INSTALL_DIR=/usr/local/bin UV_NO_MODIFY_PATH=1 sh
+
+# Rust stable, for crates and for Python extensions built with maturin. A C
+# toolchain comes with it: rustc links through cc, and the slim base has none.
+# pkg-config and the OpenSSL headers because openssl-sys, under most HTTP
+# crates, builds against them.
+#
+# rustup's way, into /usr/local like the official rust image, so it is on PATH
+# for every user; owned by node so a session can `rustup component add` or
+# install another toolchain. The toolchains live in RUSTUP_HOME in the layer.
+# CARGO_HOME is the install's own here, holding the rustup proxies; the USER
+# section below moves it to the cache volume for the session, so the registry
+# and git checkouts outlive the container, like GOMODCACHE.
+#
+# maturin as a uv tool, its binary in /usr/local/bin. Unpinned, like uv:
+# --rebuild refreshes both.
+ENV RUSTUP_HOME=/usr/local/rustup
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends build-essential pkg-config libssl-dev; \
+    rm -rf /var/lib/apt/lists/*; \
+    curl -fsSL https://sh.rustup.rs \
+        | env CARGO_HOME=/usr/local/cargo sh -s -- -y --no-modify-path \
+            --profile minimal --default-toolchain stable \
+            --component clippy,rustfmt; \
+    chown -R node:node /usr/local/rustup /usr/local/cargo; \
+    UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install maturin; \
+    /usr/local/cargo/bin/cargo --version; maturin --version
 
 # npm 11. The console's .npmrc sets engine-strict and its package.json wants
 # npm >=11.10, so anything older refuses to install (EBADENGINE) — on purpose,
@@ -294,7 +321,8 @@ EOF
 
 USER node
 ENV TERM=xterm-256color COLORTERM=truecolor \
-    PATH="/home/node/.local/bin:/opt/nix/bin:/usr/lib/postgresql/${PG_MAJOR}/bin:${PATH}" \
+    PATH="/home/node/.local/bin:/opt/nix/bin:/usr/lib/postgresql/${PG_MAJOR}/bin:/usr/local/cargo/bin:/home/node/.cache/cargo/bin:${PATH}" \
+    CARGO_HOME=/home/node/.cache/cargo \
     DISABLE_AUTOUPDATER=1 \
     MEMPALACE_PYTHON=/usr/local/bin/mempalace-python-capped \
     NIX_REMOTE=daemon \
@@ -304,7 +332,9 @@ ENV TERM=xterm-256color COLORTERM=truecolor \
 # GOMODCACHE above: Go's build cache already lands in $XDG_CACHE_HOME/go-build,
 # the cache volume, but the module cache defaults to ~/go/pkg/mod, which is not
 # a volume — so `go mod tidy` and `go work vendor` re-downloaded everything each
-# session. Same volume, same persistence.
+# session. Same volume, same persistence. CARGO_HOME likewise, for the crate
+# registry; `cargo install` lands in its bin, which is on PATH above, after the
+# rustup proxies in /usr/local/cargo/bin.
 
 # helm-unittest, for the charts' tests. A helm plugin, so it is installed as
 # the user helm will run as, into ~/.local/share/helm/plugins — a plain copy
