@@ -8,7 +8,7 @@ FROM node:22-bookworm-slim
 # their own. curl retries nothing unless asked, and a failed lookup does not
 # count as transient for it without --retry-all-errors.
 #
-# Asked here once, for the whole build, rather than on each of the fourteen
+# Asked here once, for the whole build, rather than on each of the fifteen
 # curl lines and never inside the installers that call curl themselves (uv's,
 # rustup's, Claude Code's, helm-unittest's). CURL_HOME is where curl looks for its rc
 # file before $HOME, so this reaches the root steps and the `USER node` ones
@@ -151,6 +151,41 @@ RUN set -eux; \
     chown -R node:node /usr/local/rustup /usr/local/cargo; \
     UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install maturin; \
     /usr/local/cargo/bin/cargo --version; maturin --version
+
+# R, from CRAN's own Debian repository: bookworm carries 4.2, CRAN the current
+# 4.x. Its key is published on the Ubuntu keyserver as ASCII armor, so the .asc
+# trick from the Docker block works here too. r-base-dev for packages that
+# compile, with the build tools above; curl, XML and OpenSSL headers because
+# the packages most others depend on (curl, xml2, openssl) build against them.
+#
+# Packages install into R_LIBS_USER on the cache volume, so they outlive the
+# container. R drops an R_LIBS_USER that does not exist, and the volume hides
+# anything the image would put there, so Rprofile.site creates it at startup.
+# The default repository is Posit's package manager for bookworm, which serves
+# prebuilt Linux binaries; it only does so when the user agent names the R
+# version, which is what the HTTPUserAgent line is for.
+RUN set -eux; \
+    curl -fsSL 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x95C0FAF38DB3CCAD0C080A7BDC78B2DDEABC47B7' \
+        -o /usr/share/keyrings/cran-archive-keyring.asc; \
+    echo "deb [signed-by=/usr/share/keyrings/cran-archive-keyring.asc] https://cloud.r-project.org/bin/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME")-cran40/" \
+        > /etc/apt/sources.list.d/cran.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        r-base-core r-base-dev \
+        libcurl4-openssl-dev libxml2-dev; \
+    rm -rf /var/lib/apt/lists/*; \
+    echo 'R_LIBS_USER=/home/node/.cache/R/library' >> /etc/R/Renviron.site; \
+    printf '%s\n' \
+        'local({' \
+        '  lib <- Sys.getenv("R_LIBS_USER")' \
+        '  if (nzchar(lib) && !dir.exists(lib)) dir.create(lib, recursive = TRUE, showWarnings = FALSE)' \
+        '  if (dir.exists(lib)) .libPaths(c(lib, .libPaths()))' \
+        '  options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/bookworm/latest"),' \
+        '          HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(),' \
+        '            paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))' \
+        '})' \
+        >> /etc/R/Rprofile.site; \
+    R --version | head -1
 
 # npm 11. The console's .npmrc sets engine-strict and its package.json wants
 # npm >=11.10, so anything older refuses to install (EBADENGINE) — on purpose,
