@@ -37,6 +37,14 @@
     # a long local CUDA compile on every bump. See services.ollama in
     # configuration.nix; drop when nixpkgs#545542 lands and a rebuild is ok.
     nixpkgs-ollama.url = "github:NixOS/nixpkgs/549bd84d6279f9852cae6225e372cc67fb91a4c1";
+
+    # tile-ai's own MCP server (services/mcp), run by home/tileai-mcp.nix.
+    # Tracks main; flake.lock holds the commit, so `nix flake update tile-ai`
+    # moves it to the newest main. The repository is private:
+    # whoever evaluates the flake (root, for `sudo nixos-rebuild`) needs a
+    # GitHub token with repo read as `access-tokens = github.com=<token>` in
+    # its nix.conf (docs/tileai-mcp.md).
+    tile-ai.url = "github:TileDB-Inc/tile-ai";
   };
 
   outputs = { self, nixpkgs, home-manager, nixvim, nix-flatpak, ... }@inputs: {
@@ -52,6 +60,7 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.backupFileExtension = "hm-backup";
+          home-manager.extraSpecialArgs = { inherit inputs; };
           home-manager.users.andreas = {
             imports = [
               nixvim.homeModules.nixvim
@@ -81,6 +90,7 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.backupFileExtension = "hm-backup";
+          home-manager.extraSpecialArgs = { inherit inputs; };
           home-manager.users.andreas = {
             imports = [
               nixvim.homeModules.nixvim
@@ -112,6 +122,7 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.backupFileExtension = "hm-backup";
+          home-manager.extraSpecialArgs = { inherit inputs; };
           home-manager.users.andreas = {
             imports = [
               nixvim.homeModules.nixvim
@@ -146,6 +157,7 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.backupFileExtension = "hm-backup";
+          home-manager.extraSpecialArgs = { inherit inputs; };
           home-manager.users.andreas = {
             imports = [
               nixvim.homeModules.nixvim
