@@ -6,7 +6,7 @@
 # `home.stateVersion` is deliberately absent: it records when a host was first
 # installed, so each host sets its own.
 
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
   imports = [ ../neovim.nix ];
@@ -68,6 +68,9 @@
 
     # Node.js (npm, npx)
     nodejs_22
+
+    # HP 48-style RPN calculator (the rpn48 flake input)
+    inputs.rpn48.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 
   # OpenAI's Codex CLI, on the host rather than in the Claude sandbox: it is

@@ -45,6 +45,13 @@
     # GitHub token with repo read as `access-tokens = github.com=<token>` in
     # its nix.conf (docs/tileai-mcp.md).
     tile-ai.url = "github:TileDB-Inc/tile-ai";
+
+    # HP 48-style RPN calculator for the terminal, installed by home/common.nix.
+    # Public, so it needs no token; `nix flake update rpn48` takes its newest main.
+    rpn48 = {
+      url = "github:antalakas/rpn48";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, nixvim, nix-flatpak, ... }@inputs: {

@@ -155,8 +155,29 @@
         "nixpkgs": "nixpkgs",
         "nixpkgs-ollama": "nixpkgs-ollama",
         "nixvim": "nixvim",
+        "rpn48": "rpn48",
         "sops-nix": "sops-nix",
         "tile-ai": "tile-ai"
+      }
+    },
+    "rpn48": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794404056,
+        "narHash": "sha256-OK5j78lSbh5P5oOb4Xc8+GXfPICtaif8deaIH3RENHY=",
+        "owner": "antalakas",
+        "repo": "rpn48",
+        "rev": "1a08c15a9da1c4cc8a47ae1e25cd33e8db3c0ff7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "antalakas",
+        "repo": "rpn48",
+        "type": "github"
       }
     },
     "sops-nix": {
