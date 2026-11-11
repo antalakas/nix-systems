@@ -207,7 +207,7 @@ in
 
   # YubiKey smartcard support
   services.pcscd.enable = true;
-  services.udev.packages = [ pkgs.yubikey-personalization ];
+  services.udev.packages = [ pkgs.yubikey-personalization pkgs.libmtp ];
 
   # plocate (fast file location)
   services.locate = {
@@ -228,6 +228,16 @@ in
   hardware.graphics.enable32Bit = true;
   # 3Dconnexion SpaceMouse / SpaceNavigator (open-source spacenavd; works with many older USB models)
   hardware.spacenavd.enable = true;
+
+  # USB drives in Nautilus. Under GNOME these come for free; under niri nothing
+  # enables them, so plugged-in drives never show up in the sidebar. udisks2
+  # does the mounting (to /run/media/$USER), gvfs is how Nautilus sees it.
+  services.udisks2.enable = true;
+  services.gvfs.enable = true;
+  # MTP devices (the Garmin Edge 1050 is MTP-only, not a mass-storage drive):
+  # gvfs's MTP backend shows them in Nautilus, but only if the user can open
+  # the USB node. libmtp's udev rules (in services.udev.packages above, next to
+  # the YubiKey ones) tag known MTP devices for the logged-in user.
 
   # NVIDIA drivers
   services.xserver.videoDrivers = [ "nvidia" ];
