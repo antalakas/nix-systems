@@ -121,6 +121,9 @@ in
     mesa-demos
     nvtopPackages.full
 
+    # Runs Battle.net and Warcraft III: Reforged under GE-Proton
+    lutris
+
     # CUDA toolkit
     cudatoolkit
 
@@ -221,6 +224,8 @@ in
 
   # Enable OpenGL
   hardware.graphics.enable = true;
+  # 32-bit Vulkan/GL for Wine; Battle.net can fail to install without it.
+  hardware.graphics.enable32Bit = true;
   # 3Dconnexion SpaceMouse / SpaceNavigator (open-source spacenavd; works with many older USB models)
   hardware.spacenavd.enable = true;
 
