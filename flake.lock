@@ -167,11 +167,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794491223,
-        "narHash": "sha256-xDmZugrklf2Fne9IwT8y7X+dM6qNo5bAJewjVPE9VXE=",
+        "lastModified": 1794491614,
+        "narHash": "sha256-mbmBxZLzw6xFoHa9o6POilL1mSTktDt9D0m7WiVjuVQ=",
         "owner": "antalakas",
         "repo": "rpn48",
-        "rev": "27ba0730d53d9f867a05271a46a8437366d5bb19",
+        "rev": "ce8318769cb01ef6d1309701edb482ee9b549ea5",
         "type": "github"
       },
       "original": {
