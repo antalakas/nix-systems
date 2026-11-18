@@ -152,11 +152,15 @@ RUN set -eux; \
     UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install maturin; \
     /usr/local/cargo/bin/cargo --version; maturin --version
 
-# R, from CRAN's own Debian repository: bookworm carries 4.2, CRAN the current
-# 4.x. Its key is published on the Ubuntu keyserver as ASCII armor, so the .asc
-# trick from the Docker block works here too. r-base-dev for packages that
-# compile, with the build tools above; curl, XML and OpenSSL headers because
-# the packages most others depend on (curl, xml2, openssl) build against them.
+# R, from Posit's prebuilt Debian 12 builds: bookworm carries 4.2, Posit 4.6.
+# CRAN's own Debian repository was the source until its signing key
+# (95C0FAF3..., Johannes Ranke) expired on 2026-11-15 with no extension
+# published, which apt rejects outright; Posit's .deb comes over HTTPS like
+# rustup and uv above. Posit retired bookworm after 4.6.0, so that is the pin;
+# newer R needs a trixie base. The .deb installs under /opt/R/<version> and
+# pulls in the compilers and headers r-base-dev used to; curl, XML and OpenSSL
+# headers because the packages most others depend on (curl, xml2, openssl)
+# build against them.
 #
 # Packages install into R_LIBS_USER on the cache volume, so they outlive the
 # container. R drops an R_LIBS_USER that does not exist, and the volume hides
@@ -164,17 +168,19 @@ RUN set -eux; \
 # The default repository is Posit's package manager for bookworm, which serves
 # prebuilt Linux binaries; it only does so when the user agent names the R
 # version, which is what the HTTPUserAgent line is for.
+ARG R_VERSION=4.6.0
 RUN set -eux; \
-    curl -fsSL 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x95C0FAF38DB3CCAD0C080A7BDC78B2DDEABC47B7' \
-        -o /usr/share/keyrings/cran-archive-keyring.asc; \
-    echo "deb [signed-by=/usr/share/keyrings/cran-archive-keyring.asc] https://cloud.r-project.org/bin/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME")-cran40/" \
-        > /etc/apt/sources.list.d/cran.list; \
+    ARCH="$(dpkg --print-architecture)"; \
+    curl -fsSL "https://cdn.posit.co/r/debian-12/pkgs/r-${R_VERSION}_1_${ARCH}.deb" -o /tmp/r.deb; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        r-base-core r-base-dev \
+        /tmp/r.deb \
         libcurl4-openssl-dev libxml2-dev; \
-    rm -rf /var/lib/apt/lists/*; \
-    echo 'R_LIBS_USER=/home/node/.cache/R/library' >> /etc/R/Renviron.site; \
+    rm -rf /var/lib/apt/lists/* /tmp/r.deb; \
+    ln -s "/opt/R/${R_VERSION}/bin/R" /usr/local/bin/R; \
+    ln -s "/opt/R/${R_VERSION}/bin/Rscript" /usr/local/bin/Rscript; \
+    R_ETC="/opt/R/${R_VERSION}/lib/R/etc"; \
+    echo 'R_LIBS_USER=/home/node/.cache/R/library' >> "$R_ETC/Renviron.site"; \
     printf '%s\n' \
         'local({' \
         '  lib <- Sys.getenv("R_LIBS_USER")' \
@@ -184,7 +190,7 @@ RUN set -eux; \
         '          HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(),' \
         '            paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))' \
         '})' \
-        >> /etc/R/Rprofile.site; \
+        >> "$R_ETC/Rprofile.site"; \
     R --version | head -1
 
 # npm 11. The console's .npmrc sets engine-strict and its package.json wants

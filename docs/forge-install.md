@@ -374,7 +374,7 @@ A repository's flake devShell, when it has one, goes ahead of these on PATH
 | Python | python3 3.11, uv | `~/.cache/uv` |
 | Rust | stable through rustup, with clippy and rustfmt; maturin | `~/.cache/cargo` |
 | C | build-essential, pkg-config, OpenSSL, curl and XML headers | — |
-| R | 4.5 from CRAN's Debian repository, with r-base-dev | `~/.cache/R/library` |
+| R | 4.6.0 from Posit's Debian 12 builds (CRAN's Debian key expired 2026-11-15) | `~/.cache/R/library` |
 | Go | none in the image; from a flake | `~/.cache/go`, `~/.cache/go-build` |
 | PostgreSQL | 16 with pgvector, binaries only — `initdb` a cluster in userspace | wherever it is initdb'd |
 | Java | headless JRE, for openapi-generator | — |
