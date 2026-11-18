@@ -366,7 +366,7 @@ A repository's flake devShell, when it has one, goes ahead of these on PATH
 
 | | what | where state lives |
 |---|---|---|
-| Claude Code | pinned by `CLAUDE_CODE_VERSION` (2.1.312) | profile's `.claude/` |
+| Claude Code | pinned by `CLAUDE_CODE_VERSION` (2.1.327) | profile's `.claude/` |
 | GitHub | `gh`, git over HTTPS with the owner's token | — |
 | Cloud and k8s | AWS CLI v2, kubectl, helm with helm-unittest, kind, terraform | `~/.kube`, `~/.aws` from the host |
 | Docker | client, compose, buildx — for the host's daemon | — |
