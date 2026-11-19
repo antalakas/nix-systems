@@ -13,7 +13,7 @@ let
   home = "/srv/tessera";
   repo = "${home}/tessera";
   envFile = config.sops.secrets.tessera_env.path;
-  path = with pkgs; [ pixi nodejs_22 docker bash coreutils git ];
+  path = with pkgs; [ pixi nodejs_22 docker bash coreutils git gawk gnused gnugrep findutils procps which ];
 in {
   # The same pixi/node the units use, on PATH for interactive shells (cloning,
   # `pixi install`, `npm ci && npm run build` by hand). Taken from the same
