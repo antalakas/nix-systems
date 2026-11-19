@@ -182,6 +182,25 @@ in
   # must not be exposed on the LAN or any other interface.
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 11434 ];
 
+  # Sunshine: game-stream host for Moonlight (the Android TV client). Runs as a
+  # user service on graphical-session.target, so it starts with the niri session
+  # and stops at logout. capSysAdmin is for KMS capture, which grabs the screen
+  # straight from DRM — the dependable path under niri. openFirewall opens the
+  # streaming ports (TCP 47984/47989/47990/48010, UDP 47998-48000/48010) on
+  # every interface, because the TV is on the LAN; 47990 is the web UI, which
+  # wants a login set on first visit and by default only answers LAN clients.
+  # Discovery rides on the avahi set up for printing below. The first pairing
+  # is done in that web UI (https://localhost:47990) with the PIN Moonlight shows.
+  services.sunshine = {
+    enable = true;
+    capSysAdmin = true;
+    openFirewall = true;
+  };
+
+  # VA-API on the Intel iGPU, so Sunshine can hardware-encode on whichever GPU
+  # drives the display it captures (NVENC is the other path, on the dGPU).
+  hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
+
   # Printing (Xerox B210 at 192.168.10.46)
   services.printing = {
     enable = true;
