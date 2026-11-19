@@ -24,6 +24,7 @@
   # are set up on it yet.
   ++ lib.optionals (builtins.pathExists ../../secrets/nuc.yaml) [
     ./secrets.nix
+    ./tessera.nix
   ];
 
   networking.hostName = "nuc";

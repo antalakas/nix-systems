@@ -19,8 +19,9 @@
     # restic_password. This host does have a /srv to back up to (./disko.nix
     # puts the 850 PRO there), but no restic units are configured — so naming
     # the secret would only fail activation for a service that does not exist.
-    # Add it alongside a backup.nix if that changes. A Tessera .env is the
-    # other obvious candidate, once docs/deployment.md is translated to NixOS.
+    # Add it alongside a backup.nix if that changes. Tessera's secrets
+    # (tessera_env, cloudflared_creds) are declared next to their users, in
+    # ./tessera.nix.
     secrets.tailscale_authkey = { };
   };
 
