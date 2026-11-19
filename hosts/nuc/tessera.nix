@@ -15,6 +15,11 @@ let
   envFile = config.sops.secrets.tessera_env.path;
   path = with pkgs; [ pixi nodejs_22 docker bash coreutils git ];
 in {
+  # The same pixi/node the units use, on PATH for interactive shells (cloning,
+  # `pixi install`, `npm ci && npm run build` by hand). Taken from the same
+  # pkgs, so shell and services stay in lockstep across nixpkgs updates.
+  environment.systemPackages = with pkgs; [ pixi nodejs_22 ];
+
   users.users.tessera = {
     isSystemUser = true; group = "tessera"; extraGroups = [ "docker" ];
     home = home; createHome = true; shell = pkgs.bash;
